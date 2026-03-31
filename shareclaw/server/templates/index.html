@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShareClaw — 节点同步</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#0A0A0F;
+    --surface:#12121A;
+    --surface-2:#1A1A25;
+    --surface-3:#22222F;
+    --border:rgba(255,255,255,.06);
+    --border-active:rgba(99,102,241,.4);
+    --text:#F0F0F5;
+    --text-2:rgba(240,240,245,.55);
+    --text-3:rgba(240,240,245,.3);
+    --accent:#818CF8;
+    --accent-dim:rgba(129,140,248,.15);
+    --accent-glow:rgba(129,140,248,.08);
+    --green:#34D399;
+    --green-dim:rgba(52,211,153,.12);
+    --red:#F87171;
+    --red-dim:rgba(248,113,113,.12);
+    --amber:#FBBF24;
+    --amber-dim:rgba(251,191,36,.1);
+    --radius:12px;
+    --radius-sm:8px;
+    --mono:'JetBrains Mono',monospace;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  body{
+    font-family:var(--sans);
+    background:var(--bg);color:var(--text);
+    min-height:100vh;min-height:100dvh;
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+  /* 背景微光 */
+  body::before{
+    content:'';position:fixed;top:-50%;left:-50%;
+    width:200%;height:200%;
+    background:radial-gradient(ellipse at 30% 20%,rgba(129,140,248,.04) 0%,transparent 50%),
+               radial-gradient(ellipse at 70% 80%,rgba(52,211,153,.03) 0%,transparent 50%);
+    pointer-events:none;z-index:0;
+  }
+  .container{width:100%;max-width:420px;position:relative;z-index:1}
+
+  /* ===== 品牌区 ===== */
+  .brand{text-align:center;margin-bottom:36px}
+  .brand-logo{
+    display:inline-flex;align-items:center;gap:10px;
+    margin-bottom:16px;
+  }
+  .brand-mark{
+    width:48px;height:48px;border-radius:12px;
+    display:block;object-fit:contain;
+    filter:drop-shadow(0 0 18px rgba(129,140,248,.18));
+  }
+  .brand-name{
+    font-size:18px;font-weight:600;letter-spacing:-.02em;
+    color:var(--text);
+  }
+  .brand-tagline{
+    font-size:13px;color:var(--text-3);
+    letter-spacing:.04em;text-transform:uppercase;
+  }
+
+  /* ===== 主面板 ===== */
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    overflow:hidden;
+    transition:border-color .4s ease,box-shadow .4s ease;
+  }
+  .panel.active{
+    border-color:var(--border-active);
+    box-shadow:0 0 40px rgba(129,140,248,.06);
+  }
+  .panel.done{
+    border-color:rgba(52,211,153,.3);
+    box-shadow:0 0 40px rgba(52,211,153,.05);
+  }
+  .panel.error{
+    border-color:rgba(248,113,113,.3);
+    box-shadow:0 0 40px rgba(248,113,113,.05);
+  }
+
+  /* 面板头部 */
+  .panel-header{
+    padding:20px 24px 16px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .panel-title{
+    font-size:14px;font-weight:500;color:var(--text-2);
+    display:flex;align-items:center;gap:8px;
+  }
+  .panel-title svg{width:15px;height:15px;opacity:.6}
+
+  /* 状态徽标 */
+  .badge{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:4px 10px;border-radius:20px;
+    font-size:11px;font-weight:500;letter-spacing:.02em;
+    transition:all .3s ease;
+  }
+  .badge-idle{background:var(--surface-3);color:var(--text-3)}
+  .badge-working{background:var(--accent-dim);color:var(--accent)}
+  .badge-scan{background:var(--amber-dim);color:var(--amber)}
+  .badge-success{background:var(--green-dim);color:var(--green)}
+  .badge-error{background:var(--red-dim);color:var(--red)}
+  .badge-dot{
+    width:6px;height:6px;border-radius:50%;
+    background:currentColor;flex-shrink:0;
+  }
+  .badge-working .badge-dot,
+  .badge-scan .badge-dot{
+    animation:pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1;transform:scale(1)}
+    50%{opacity:.4;transform:scale(.8)}
+  }
+
+  /* 分割线 */
+  .divider{height:1px;background:var(--border);margin:0 24px}
+
+  /* ===== 内容区 ===== */
+  .panel-body{padding:20px 24px 24px}
+
+  /* 空闲态 - 引导文案 */
+  .idle-view{text-align:center;padding:20px 0}
+  .idle-icon{
+    width:56px;height:56px;border-radius:16px;
+    background:var(--surface-2);border:1px solid var(--border);
+    display:inline-flex;align-items:center;justify-content:center;
+    margin-bottom:16px;
+  }
+  .idle-icon svg{width:24px;height:24px;color:var(--text-3)}
+  .idle-title{
+    font-size:15px;font-weight:500;color:var(--text);
+    margin-bottom:6px;
+  }
+  .idle-desc{
+    font-size:13px;color:var(--text-3);line-height:1.6;
+    max-width:280px;margin:0 auto;
+  }
+
+  /* 进度态 */
+  .progress-view{display:none}
+  .progress-view.visible{display:block}
+
+  /* 进度轨道 */
+  .track{
+    height:2px;background:var(--surface-3);
+    border-radius:1px;margin-bottom:20px;overflow:hidden;
+  }
+  .track-fill{
+    height:100%;width:0%;border-radius:1px;
+    background:linear-gradient(90deg,var(--accent),#A78BFA);
+    transition:width .6s cubic-bezier(.4,0,.2,1);
+  }
+  .track-fill.done{background:var(--green)}
+  .track-fill.error{background:var(--red)}
+
+  /* 阶段文字 */
+  .stage-info{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:20px;
+  }
+  .stage-text{
+    font-size:13px;color:var(--text-2);
+    transition:opacity .3s ease;
+  }
+  .stage-pct{
+    font-family:var(--mono);font-size:12px;
+    color:var(--text-3);font-weight:500;
+  }
+
+  /* ===== 二维码区域 ===== */
+  .qr-area{
+    max-height:0;opacity:0;overflow:hidden;
+    transition:max-height .5s cubic-bezier(.4,0,.2,1),
+               opacity .4s ease,
+               margin .4s ease;
+    margin-bottom:0;
+  }
+  .qr-area.visible{
+    max-height:500px;opacity:1;
+    margin-bottom:20px;
+  }
+  .qr-frame{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    padding:16px;text-align:center;
+    position:relative;
+    transition:border-color .3s ease;
+  }
+  .qr-frame.scanning{
+    border-color:var(--border-active);
+  }
+  .qr-frame.scanning::after{
+    content:'';position:absolute;inset:-1px;
+    border-radius:var(--radius-sm);
+    background:linear-gradient(135deg,rgba(129,140,248,.1),transparent,rgba(129,140,248,.05));
+    pointer-events:none;
+    animation:shimmer 3s ease-in-out infinite;
+  }
+  @keyframes shimmer{
+    0%,100%{opacity:.5}50%{opacity:1}
+  }
+  .qr-prompt{
+    font-size:12px;color:var(--text-3);margin-bottom:12px;
+    letter-spacing:.02em;
+  }
+  .qr-code{
+    white-space:pre;font-family:var(--mono);
+    font-size:4.5px;line-height:1.1;letter-spacing:1px;
+    color:var(--text);overflow-x:auto;
+  }
+  .qr-countdown{
+    margin-top:12px;font-family:var(--mono);
+    font-size:11px;color:var(--text-3);
+  }
+
+  /* ===== 结果区域 ===== */
+  .result{
+    max-height:0;opacity:0;overflow:hidden;
+    transition:max-height .5s cubic-bezier(.4,0,.2,1),
+               opacity .4s ease,
+               margin .4s ease;
+    margin-bottom:0;
+  }
+  .result.visible{
+    max-height:200px;opacity:1;
+    margin-bottom:20px;
+  }
+  .result-inner{
+    padding:16px;border-radius:var(--radius-sm);
+    display:flex;align-items:flex-start;gap:12px;
+  }
+  .result-inner.success{
+    background:var(--green-dim);
+    border:1px solid rgba(52,211,153,.15);
+  }
+  .result-inner.error{
+    background:var(--red-dim);
+    border:1px solid rgba(248,113,113,.15);
+  }
+  .result-icon{
+    width:32px;height:32px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .result-inner.success .result-icon{background:rgba(52,211,153,.15)}
+  .result-inner.error .result-icon{background:rgba(248,113,113,.15)}
+  .result-icon svg{width:16px;height:16px}
+  .result-body{flex:1;min-width:0}
+  .result-title{
+    font-size:14px;font-weight:600;margin-bottom:2px;
+  }
+  .result-inner.success .result-title{color:var(--green)}
+  .result-inner.error .result-title{color:var(--red)}
+  .result-desc{
+    font-size:12px;line-height:1.5;
+  }
+  .result-inner.success .result-desc{color:rgba(52,211,153,.7)}
+  .result-inner.error .result-desc{color:rgba(248,113,113,.7)}
+
+  /* ===== 按钮 ===== */
+  .action-area{padding:0 24px 24px}
+  .btn{
+    width:100%;padding:12px 20px;border:none;
+    border-radius:var(--radius-sm);
+    font-family:var(--sans);font-size:14px;font-weight:500;
+    cursor:pointer;transition:all .2s ease;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    position:relative;overflow:hidden;
+  }
+  .btn-primary{
+    background:var(--accent);color:#fff;
+  }
+  .btn-primary:hover{
+    background:#6366F1;
+    box-shadow:0 4px 20px rgba(129,140,248,.25);
+  }
+  .btn-primary:active{
+    transform:scale(.98);
+    box-shadow:0 2px 10px rgba(129,140,248,.2);
+  }
+  .btn-primary:disabled{
+    opacity:.35;cursor:not-allowed;
+    transform:none;box-shadow:none;
+  }
+  .btn svg{width:16px;height:16px}
+
+  /* 加载动画 */
+  .spinner{
+    width:14px;height:14px;border:2px solid transparent;
+    border-top-color:currentColor;border-radius:50%;
+    animation:spin .6s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ===== 底部 ===== */
+  .footer{
+    text-align:center;margin-top:28px;
+    font-size:11px;color:var(--text-3);
+    letter-spacing:.02em;
+  }
+  .footer a{color:var(--accent);text-decoration:none;opacity:.7}
+  .footer a:hover{opacity:1}
+
+  .hidden{display:none}
+
+  /* 响应式 */
+  @media(max-width:480px){
+    body{padding:16px;align-items:flex-start;padding-top:48px}
+    .container{max-width:100%}
+    .panel-header{padding:16px 20px 12px}
+    .panel-body{padding:16px 20px 20px}
+    .action-area{padding:0 20px 20px}
+    .divider{margin:0 20px}
+  }
+
+  /* 减少动画偏好 */
+  @media(prefers-reduced-motion:reduce){
+    *{animation-duration:0.01ms!important;transition-duration:0.01ms!important}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- 品牌区 -->
+  <div class="brand">
+    <div class="brand-logo">
+      <img class="brand-mark" src="/logo.png" alt="ShareClaw Logo">
+      <span class="brand-name">ShareClaw</span>
+    </div>
+    <div class="brand-tagline">Cloud Node Sync</div>
+  </div>
+
+  <!-- 主面板 -->
+  <div class="panel" id="panel">
+    <!-- 面板头部 -->
+    <div class="panel-header">
+      <div class="panel-title">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9 2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9 2.83-2.83"/>
+        </svg>
+        <span>节点同步</span>
+      </div>
+      <div class="badge badge-idle" id="badge">
+        <div class="badge-dot"></div>
+        <span id="badgeText">待命</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 内容区 -->
+    <div class="panel-body">
+      <!-- 空闲态 -->
+      <div class="idle-view" id="idleView">
+        <div class="idle-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="idle-title">准备同步新节点</div>
+        <div class="idle-desc">将新的微信通道接入云端集群，自动完成队列调度与服务部署</div>
+      </div>
+
+      <!-- 进度态 -->
+      <div class="progress-view" id="progressView">
+        <div class="track">
+          <div class="track-fill" id="trackFill"></div>
+        </div>
+        <div class="stage-info">
+          <div class="stage-text" id="stageText">初始化中...</div>
+          <div class="stage-pct" id="stagePct">0%</div>
+        </div>
+
+        <!-- 二维码区域 -->
+        <div class="qr-area" id="qrArea">
+          <div class="qr-frame" id="qrFrame">
+            <div class="qr-prompt">使用微信扫描以完成身份绑定</div>
+            <div class="qr-code" id="qrCode"></div>
+            <div class="qr-countdown" id="qrCountdown">等待扫码...</div>
+          </div>
+        </div>
+
+        <!-- 结果区域 -->
+        <div class="result" id="result">
+          <div class="result-inner" id="resultInner">
+            <div class="result-icon" id="resultIcon"></div>
+            <div class="result-body">
+              <div class="result-title" id="resultTitle"></div>
+              <div class="result-desc" id="resultDesc"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="action-area">
+      <button class="btn btn-primary" id="actionBtn" onclick="startSync()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        开始同步
+      </button>
+    </div>
+  </div>
+
+  <!-- 底部 -->
+  <div class="footer">
+    Powered by ShareClaw · <a href="https://github.com/gardennchen/ShareClaw" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</div>
+
+<script>
+/* ===== 后端阶段 → 前端映射 ===== */
+const STAGE_TEXT = {
+  init: '正在初始化环境...',
+  backend_ready: '后端服务就绪',
+  selecting_instance: '正在调度最优节点...',
+  instance_check: '正在检查实例状态...',
+  query_status: '正在同步集群状态...',
+  evict: '正在调整队列...',
+  kick_old: '正在释放旧通道...',
+  qrcode: '等待身份验证...',
+  login_complete: '验证通过，正在部署...',
+  enqueue: '节点已加入集群',
+  restart_gateway: '正在重启网关服务...',
+  done: '同步完成'
+};
+
+const STAGE_PROGRESS = {
+  init: 8,
+  backend_ready: 18,
+  selecting_instance: 25,
+  instance_check: 20,
+  query_status: 30,
+  evict: 45,
+  kick_old: 50,
+  qrcode: 55,
+  login_complete: 70,
+  enqueue: 80,
+  restart_gateway: 90,
+  done: 100
+};
+
+let currentStage = '';
+
+/* ===== UI 工具函数 ===== */
+function setBadge(type, text) {
+  const badge = document.getElementById('badge');
+  badge.className = 'badge badge-' + type;
+  document.getElementById('badgeText').textContent = text;
+}
+
+function setTrack(pct) {
+  const fill = document.getElementById('trackFill');
+  fill.style.width = pct + '%';
+  document.getElementById('stagePct').textContent = pct + '%';
+}
+
+function setStageText(text) {
+  document.getElementById('stageText').textContent = text;
+}
+
+function showQR(data) {
+  const area = document.getElementById('qrArea');
+  const frame = document.getElementById('qrFrame');
+  document.getElementById('qrCode').textContent = data;
+  frame.classList.add('scanning');
+  area.classList.add('visible');
+}
+
+function hideQR() {
+  const area = document.getElementById('qrArea');
+  const frame = document.getElementById('qrFrame');
+  frame.classList.remove('scanning');
+  area.classList.remove('visible');
+}
+
+function showResult(type, title, desc) {
+  const container = document.getElementById('result');
+  const inner = document.getElementById('resultInner');
+  const iconEl = document.getElementById('resultIcon');
+
+  inner.className = 'result-inner ' + type;
+
+  if (type === 'success') {
+    iconEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  } else {
+    iconEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  }
+
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultDesc').textContent = desc;
+  container.classList.add('visible');
+}
+
+function setPanelState(state) {
+  const panel = document.getElementById('panel');
+  panel.className = 'panel' + (state ? ' ' + state : '');
+}
+
+function resetUI() {
+  currentStage = '';
+  document.getElementById('idleView').style.display = '';
+  document.getElementById('progressView').classList.remove('visible');
+  document.getElementById('progressView').style.display = 'none';
+  document.getElementById('trackFill').className = 'track-fill';
+  setTrack(0);
+  setStageText('');
+  setBadge('idle', '待命');
+  hideQR();
+  document.getElementById('result').classList.remove('visible');
+  setPanelState('');
+}
+
+/* ===== 核心流程 ===== */
+function startSync() {
+  const btn = document.getElementById('actionBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> 同步中...';
+  resetUI();
+
+  // 切换到进度视图
+  document.getElementById('idleView').style.display = 'none';
+  const pv = document.getElementById('progressView');
+  pv.style.display = 'block';
+  pv.classList.add('visible');
+
+  setPanelState('active');
+  setBadge('working', '同步中');
+  setStageText('正在连接...');
+
+  const es = new EventSource('/rotate');
+
+  es.addEventListener('progress', function(e) {
+    const d = JSON.parse(e.data);
+    currentStage = d.stage;
+
+    const pct = STAGE_PROGRESS[d.stage] || 0;
+    setTrack(pct);
+    setStageText(STAGE_TEXT[d.stage] || d.message);
+
+    if (d.stage === 'login_complete') {
+      hideQR();
+      setBadge('working', '部署中');
+    } else if (d.stage !== 'qrcode') {
+      setBadge('working', '同步中');
+    }
+  });
+
+  es.addEventListener('qrcode', function(e) {
+    const d = JSON.parse(e.data);
+    currentStage = 'qrcode';
+    setTrack(STAGE_PROGRESS.qrcode);
+    setBadge('scan', '待扫码');
+    setStageText('等待身份验证...');
+    showQR(d.data);
+  });
+
+  es.addEventListener('done', function(e) {
+    const d = JSON.parse(e.data);
+    es.close();
+    hideQR();
+
+    const fill = document.getElementById('trackFill');
+    fill.classList.add('done');
+    setTrack(100);
+
+    setPanelState('done');
+    setBadge('success', '已同步');
+    setStageText('同步完成');
+
+    showResult('success', '节点已上线', '新通道已接入集群并正常运行，可开始接收消息');
+
+    btn.disabled = false;
+    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg> 再次同步';
+  });
+
+  es.addEventListener('error', function(e) {
+    try {
+      const d = JSON.parse(e.data);
+      es.close();
+      hideQR();
+
+      const fill = document.getElementById('trackFill');
+      fill.classList.add('error');
+
+      setPanelState('error');
+      setBadge('error', '异常');
+      setStageText('同步中断');
+
+      showResult('error', '同步失败', d.message || '请稍后重试');
+    } catch(_) {
+      es.close();
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg> 重新同步';
+  });
+}
+</script>
+</body>
+</html>
