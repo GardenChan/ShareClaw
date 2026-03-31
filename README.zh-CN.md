@@ -5,6 +5,10 @@
 <h1 align="center">ShareClaw</h1>
 
 <p align="center">
+  <em>One Claw, Shared by Many. 🦞</em>
+</p>
+
+<p align="center">
   <strong>让多人共享同一个云端 AI 助手的微信坐席</strong>
 </p>
 

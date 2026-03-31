@@ -5,6 +5,10 @@
 <h1 align="center">ShareClaw</h1>
 
 <p align="center">
+  <em>One Claw, Shared by Many. 🦞</em>
+</p>
+
+<p align="center">
   <strong>Shared WeChat seat management for cloud-hosted <a href="https://github.com/openclaw/openclaw">OpenClaw</a> AI assistants</strong>
 </p>
 
