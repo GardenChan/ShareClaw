@@ -5,7 +5,7 @@ ShareClaw - 云端 OpenClaw 微信坐席共享轮转管理服务
 基于 OpenClaw + openclaw-weixin 生态，支持本地与远程两种部署模式。
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __author__ = "garden"
 
 

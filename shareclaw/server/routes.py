@@ -674,7 +674,7 @@ def health():
 @bp.route("/logo.png", methods=["GET"])
 def logo():
     """前端 Logo 图片"""
-    logo_path = Path(__file__).resolve().parents[2] / "shareclaw.png"
+    logo_path = Path(__file__).resolve().parent / "shareclaw.png"
     return send_file(logo_path, mimetype="image/png")
 
 
