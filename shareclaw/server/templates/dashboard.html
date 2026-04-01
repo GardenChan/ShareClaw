@@ -101,6 +101,29 @@ input:focus{border-color:var(--accent)}
 .footer{text-align:center;margin-top:24px;font-size:11px;color:var(--text-3)}
 .footer a{color:var(--accent);text-decoration:none;font-weight:500}
 
+/* 弹窗遮罩 */
+.dialog-mask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:100;align-items:center;justify-content:center}
+.dialog-mask.visible{display:flex}
+.dialog-box{background:var(--white);border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.15);width:100%;max-width:400px;padding:28px 24px;margin:20px;text-align:center;animation:dialogIn .25s ease}
+@keyframes dialogIn{from{opacity:0;transform:scale(.95) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.dialog-icon{width:48px;height:48px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px}
+.dialog-icon.success{background:var(--green-light);color:var(--green)}
+.dialog-icon.warn{background:var(--amber-light);color:var(--amber)}
+.dialog-icon svg{width:24px;height:24px}
+.dialog-title{font-size:16px;font-weight:700;margin-bottom:6px;color:var(--text)}
+.dialog-desc{font-size:13px;color:var(--text-2);line-height:1.6;margin-bottom:16px}
+.dialog-code-box{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:6px;cursor:pointer;transition:border-color .2s}
+.dialog-code-box:hover{border-color:var(--accent)}
+.dialog-code-val{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--accent);word-break:break-all;line-height:1.5}
+.dialog-code-hint{font-size:11px;color:var(--text-3);margin-top:4px}
+.dialog-url{font-family:var(--mono);font-size:11px;color:var(--text-3);word-break:break-all;margin-bottom:16px;line-height:1.5}
+.dialog-actions{display:flex;gap:8px;justify-content:center}
+.dialog-actions .btn{min-width:100px;justify-content:center}
+
+/* Toast */
+.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:10px 20px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.15)}
+.toast.show{opacity:1}
+
 @media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}body{padding:16px}}
 </style>
 </head>
@@ -168,6 +191,12 @@ input:focus{border-color:var(--accent)}
     </div>
   </div>
 
+  <!-- 微信账号强隔离状态 -->
+  <div class="card" id="isolationCard" style="display:none">
+    <div class="card-hd"><h3>微信账号强隔离</h3><span class="tag tag-on" id="isolationBadge"><span class="tag-dot"></span>已开启</span></div>
+    <div class="card-bd" id="isolationBox"><div class="empty">加载中...</div></div>
+  </div>
+
   <div class="card"><div class="card-hd"><h3>当前在线</h3></div><div class="card-bd" id="activeBox"><div class="empty">暂无在线坐席</div></div></div>
   <div class="card"><div class="card-hd"><h3>共养人</h3></div><div class="card-bd" id="usersBox"><div class="empty">还没有人加入</div></div></div>
   <div class="card"><div class="card-hd"><h3>邀请码</h3><button class="btn btn-primary btn-sm" onclick="createInvite()">+ 生成</button></div><div class="card-bd" id="invBox"><div class="empty">点击上方按钮生成邀请码</div></div></div>
@@ -190,11 +219,59 @@ input:focus{border-color:var(--accent)}
       <div class="form-row"><label>每人每日配额 (h)</label><input type="number" id="sQuotaVal" placeholder="8" min="1" max="24"></div>
       <div class="form-row"><label>需要邀请码</label><div class="sw" id="sInv" onclick="this.classList.toggle('on')"><div class="sw-dot"></div></div></div>
       <div class="form-row"><label>自动踢出超额</label><div class="sw" id="sAuto" onclick="this.classList.toggle('on')"><div class="sw-dot"></div></div></div>
+      <div style="border-top:1px solid var(--border);margin:14px 0;padding-top:14px">
+        <div class="form-row">
+          <label style="min-width:140px">微信账号强隔离</label>
+          <div class="sw" id="sIsolation" onclick="this.classList.toggle('on')"><div class="sw-dot"></div></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-3);margin-left:2px;margin-top:4px;line-height:1.6">
+          开启后，新接入的微信号将自动创建独立 Agent（独立工作区、会话、记忆、人格），实现最强级别隔离。<br>
+          关闭后，新接入的微信号共享默认 Agent。<a href="https://github.com/GardenChan/ShareClaw/blob/main/docs/openclaw-isolation-guide.md" target="_blank" style="color:var(--accent)">了解更多 →</a>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="footer"><a href="https://github.com/gardennchen/ShareClaw" target="_blank" style="display:inline-flex;align-items:center;gap:4px"><svg viewBox="0 0 16 16" fill="currentColor" style="width:13px;height:13px"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a></div>
+  <div class="footer"><a href="https://github.com/GardenChan/ShareClaw" target="_blank" style="display:inline-flex;align-items:center;gap:4px"><svg viewBox="0 0 16 16" fill="currentColor" style="width:13px;height:13px"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a></div>
 </div>
+
+<!-- 邀请码生成成功弹窗 -->
+<div class="dialog-mask" id="inviteDialog" onclick="if(event.target===this)hideInviteDialog()">
+  <div class="dialog-box">
+    <div class="dialog-icon success">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    </div>
+    <div class="dialog-title">邀请码已生成</div>
+    <div class="dialog-desc">分享邀请链接给你的朋友，每个邀请码仅可使用一次</div>
+    <div class="dialog-code-box" id="invCodeBox" onclick="copyInviteUrl()">
+      <div class="dialog-code-val" id="invCodeVal"></div>
+      <div class="dialog-code-hint">点击复制邀请链接</div>
+    </div>
+    <div class="dialog-url" id="invUrlVal"></div>
+    <div class="dialog-actions">
+      <button class="btn" style="background:var(--bg);color:var(--text-2)" onclick="hideInviteDialog()">关闭</button>
+      <button class="btn btn-primary" onclick="copyInviteUrl()">复制链接</button>
+    </div>
+  </div>
+</div>
+
+<!-- 确认弹窗 -->
+<div class="dialog-mask" id="confirmDialog" onclick="if(event.target===this)hideConfirmDialog(false)">
+  <div class="dialog-box">
+    <div class="dialog-icon warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </div>
+    <div class="dialog-title" id="confirmTitle">确认操作</div>
+    <div class="dialog-desc" id="confirmDesc"></div>
+    <div class="dialog-actions">
+      <button class="btn" style="background:var(--bg);color:var(--text-2)" onclick="hideConfirmDialog(false)">取消</button>
+      <button class="btn btn-primary" onclick="hideConfirmDialog(true)">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
 <script>
 let adminToken = localStorage.getItem('shareclaw_admin_token') || '';
@@ -230,6 +307,7 @@ function showMain() {
   document.getElementById('mainWrap').style.display = '';
   load();
   loadModels();
+  loadIsolation();
 }
 
 async function doLogin() {
@@ -312,6 +390,7 @@ async function load(){
     document.getElementById('sQuotaVal').value=st.settings.default_quota_hours||8;
     document.getElementById('sInv').classList.toggle('on',!!st.settings.require_invite);
     document.getElementById('sAuto').classList.toggle('on',!!st.settings.auto_evict_enabled);
+    document.getElementById('sIsolation').classList.toggle('on',!!st.settings.account_isolation_enabled);
   }catch(e){console.error(e)}
 }
 
@@ -319,20 +398,52 @@ async function createInvite(){
   const r=await fetch('/api/invitations',{method:'POST',headers:authHeaders(),body:JSON.stringify({})});
   if(r.status===401){showLogin();return}
   const d=await r.json();
-  alert('邀请链接已生成（一次性）：\n'+d.invite_url);load();
-}
-async function delInv(c){
-  if(!confirm('确定删除？'))return;
-  const r=await fetch('/api/invitations/'+c,{method:'DELETE',headers:authHeaders()});
-  if(r.status===401){showLogin();return}
+  window._lastInviteUrl=d.invite_url;
+  document.getElementById('invCodeVal').textContent=d.code;
+  document.getElementById('invUrlVal').textContent=d.invite_url;
+  document.getElementById('inviteDialog').classList.add('visible');
   load();
 }
-function copyCode(c){navigator.clipboard.writeText(location.origin+'/?invite='+c);alert('邀请链接已复制！')}
+function hideInviteDialog(){document.getElementById('inviteDialog').classList.remove('visible')}
+function copyInviteUrl(){
+  if(window._lastInviteUrl){
+    navigator.clipboard.writeText(window._lastInviteUrl);
+    showToast('邀请链接已复制');
+  }
+}
+
+let _confirmResolve=null;
+function showConfirm(title,desc){
+  document.getElementById('confirmTitle').textContent=title;
+  document.getElementById('confirmDesc').textContent=desc;
+  document.getElementById('confirmDialog').classList.add('visible');
+  return new Promise(r=>{_confirmResolve=r});
+}
+function hideConfirmDialog(ok){
+  document.getElementById('confirmDialog').classList.remove('visible');
+  if(_confirmResolve){_confirmResolve(ok);_confirmResolve=null}
+}
+
+function showToast(msg,duration){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid=setTimeout(()=>t.classList.remove('show'),duration||2000);
+}
+
+async function delInv(c){
+  const ok=await showConfirm('删除邀请码','确定要删除这个邀请码吗？删除后不可恢复。');
+  if(!ok)return;
+  const r=await fetch('/api/invitations/'+c,{method:'DELETE',headers:authHeaders()});
+  if(r.status===401){showLogin();return}
+  showToast('已删除');load();
+}
+function copyCode(c){navigator.clipboard.writeText(location.origin+'/?invite='+c);showToast('邀请链接已复制')}
 async function saveSettings(){
-  const s={monthly_cost:parseFloat(document.getElementById('sCostVal').value)||0,default_quota_hours:parseInt(document.getElementById('sQuotaVal').value)||8,require_invite:document.getElementById('sInv').classList.contains('on'),auto_evict_enabled:document.getElementById('sAuto').classList.contains('on')};
+  const s={monthly_cost:parseFloat(document.getElementById('sCostVal').value)||0,default_quota_hours:parseInt(document.getElementById('sQuotaVal').value)||8,require_invite:document.getElementById('sInv').classList.contains('on'),auto_evict_enabled:document.getElementById('sAuto').classList.contains('on'),account_isolation_enabled:document.getElementById('sIsolation').classList.contains('on')};
   const r=await fetch('/api/settings',{method:'PUT',headers:authHeaders(),body:JSON.stringify(s)});
   if(r.status===401){showLogin();return}
-  alert('已保存！');load();
+  showToast('设置已保存');load();loadIsolation();
 }
 
 // ==================== 模型配置 ====================
@@ -435,6 +546,46 @@ async function delModelCfg(id){
   const r=await fetch('/api/models/configs/'+id,{method:'DELETE',headers:authHeaders()});
   if(r.status===401){showLogin();return}
   loadModels();
+}
+
+// ==================== 微信账号强隔离 ====================
+
+async function loadIsolation(){
+  const hd=authHeaders();
+  try{
+    const r=await fetch('/api/isolation/status',{headers:hd});
+    if(r.status===401)return;
+    const d=await r.json();
+    const card=document.getElementById('isolationCard');
+    const badge=document.getElementById('isolationBadge');
+    const box=document.getElementById('isolationBox');
+
+    if(d.enabled){
+      card.style.display='';
+      badge.className='tag tag-on';
+      badge.innerHTML='<span class="tag-dot"></span>已开启';
+
+      const bindings=(d.bindings||[]).filter(b=>b.match&&b.match.channel==='openclaw-weixin');
+      const agents=(d.agents||[]).filter(a=>a.id&&a.id.startsWith('wx-'));
+
+      if(bindings.length||agents.length){
+        let h='<p style="font-size:12px;color:var(--text-3);margin-bottom:8px">已隔离的微信账号 ('+bindings.length+' 个绑定, '+agents.length+' 个独立 Agent)：</p>';
+        if(bindings.length){
+          h+='<table><tr><th>Account ID</th><th>Agent ID</th></tr>';
+          bindings.forEach(b=>{
+            h+='<tr><td style="font-size:11px;font-family:var(--mono)">'+(b.match.accountId||'-')+'</td>'
+              +'<td style="font-size:11px;font-family:var(--mono)">'+b.agentId+'</td></tr>';
+          });
+          h+='</table>';
+        }
+        box.innerHTML=h;
+      } else {
+        box.innerHTML='<div class="empty" style="padding:12px">强隔离已开启，新接入的微信号将自动创建独立 Agent</div>';
+      }
+    } else {
+      card.style.display='none';
+    }
+  }catch(e){console.error('loadIsolation',e)}
 }
 
 // 启动

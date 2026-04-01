@@ -138,7 +138,7 @@ sudo chown -R ubuntu:ubuntu /opt/shareclaw
 ### 6.2 拉取代码
 
 ```bash
-git clone https://github.com/gardennchen/ShareClaw.git /opt/shareclaw/ShareClaw
+git clone https://github.com/GardenChan/ShareClaw.git /opt/shareclaw/ShareClaw
 ```
 
 ### 6.3 创建虚拟环境并安装

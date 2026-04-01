@@ -337,6 +337,32 @@ def api_cost_split():
     })
 
 
+# ── 微信账号强隔离 API ────────────────────────────────────
+
+@bp.route("/api/isolation/status", methods=["GET"])
+@_require_admin
+def api_isolation_status():
+    """获取隔离状态（当前 bindings 和 agents）"""
+    from shareclaw.config import get_config
+    from shareclaw.claw.backend import create_backend
+    from shareclaw.claw.backend.remote import RemoteBackend
+    from shareclaw.claw.isolation import get_isolation_status
+
+    config = get_config()
+    try:
+        if config["mode"] == "local":
+            backend = create_backend(config)
+        else:
+            backend = RemoteBackend(config, instance_id=config["instance_ids"][0])
+        status = get_isolation_status(backend)
+        store = _get_sharing_store()
+        settings = store.read_settings()
+        status["enabled"] = settings.get("account_isolation_enabled", False)
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({"error": str(e), "bindings": [], "agents": [], "enabled": False})
+
+
 # ── 模型配置 API ──────────────────────────────────────────
 
 @bp.route("/api/models/configs", methods=["GET"])

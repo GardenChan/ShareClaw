@@ -249,4 +249,4 @@ ShareClaw 的核心场景是**多人共享微信坐席轮转**：每位用户扫
 | OpenClaw 会话管理文档 | https://docs.openclaw.ai/zh-CN/concepts/session |
 | openclaw-weixin ilink 协议分析 | https://segmentfault.com/a/1190000047673612 |
 | 多微信账号配置教程 | https://www.intoep.com/ai/73132.html |
-| ShareClaw GitHub | https://github.com/gardennchen/ShareClaw |
+| ShareClaw GitHub | https://github.com/GardenChan/ShareClaw |

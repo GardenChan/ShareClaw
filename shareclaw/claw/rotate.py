@@ -1,6 +1,7 @@
 """坐席轮转核心流程"""
 
 import logging
+import os
 import threading
 
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
@@ -9,6 +10,7 @@ from shareclaw.config import get_config
 from shareclaw.claw.backend import create_backend
 from shareclaw.claw.backend.remote import RemoteBackend
 from shareclaw.claw.queue import evict_oldest_if_needed, enqueue_account, detect_new_account, get_queue_info
+from shareclaw.claw.isolation import setup_isolated_agent, teardown_isolated_agent
 from shareclaw.claw.scheduler import InstanceScheduler
 from shareclaw.server.sse import sse_event
 
@@ -64,9 +66,22 @@ def rotate_stream():
         config = get_config()
         mode = config["mode"]
 
+        # 读取隔离开关
+        isolation_enabled = False
+        try:
+            from shareclaw.sharing.store import SharingStore
+            data_dir = config.get("shareclaw_home") or os.path.expanduser("~/.shareclaw")
+            _store = SharingStore(data_dir)
+            _settings = _store.read_settings()
+            isolation_enabled = _settings.get("account_isolation_enabled", False)
+        except Exception:
+            pass
+
         yield sse_event("progress", {
             "stage": "init",
-            "message": f"配置加载完成，部署模式: {mode}，开始执行轮转...",
+            "message": f"配置加载完成，部署模式: {mode}"
+                       + (f"，微信账号强隔离: 已开启" if isolation_enabled else "")
+                       + "，开始执行轮转...",
         })
 
         # 2. 创建后端并确定实例 ID
@@ -131,6 +146,18 @@ def rotate_stream():
                 "message": f"已踢出最早的 account: {evicted}",
                 "data": {"evicted_account": evicted},
             })
+
+            # 如果开启了强隔离，清理被踢出账号的 binding
+            if isolation_enabled:
+                try:
+                    teardown_result = teardown_isolated_agent(backend, evicted)
+                    yield sse_event("progress", {
+                        "stage": "isolation_cleanup",
+                        "message": f"已清理被踢出账号的隔离配置",
+                        "data": teardown_result,
+                    })
+                except Exception as e:
+                    logger.warning(f"清理隔离配置失败（不影响轮转）: {e}")
         else:
             yield sse_event("progress", {
                 "stage": "evict",
@@ -152,6 +179,22 @@ def rotate_stream():
                 "message": f"新 account 已入队: {new_account}",
                 "data": {"new_account": new_account},
             })
+
+            # 如果开启了强隔离，为新账号创建独立 Agent 并配置 binding
+            if isolation_enabled:
+                try:
+                    isolation_result = setup_isolated_agent(backend, new_account)
+                    yield sse_event("progress", {
+                        "stage": "isolation_setup",
+                        "message": f"已为新账号创建独立 Agent: {isolation_result['agent_id']}",
+                        "data": isolation_result,
+                    })
+                except Exception as e:
+                    logger.error(f"强隔离设置失败: {e}")
+                    yield sse_event("progress", {
+                        "stage": "isolation_setup",
+                        "message": f"⚠️ 强隔离设置失败（账号已接入但未隔离）: {str(e)}",
+                    })
         else:
             logger.warning("登录后未检测到新增 account")
             yield sse_event("progress", {

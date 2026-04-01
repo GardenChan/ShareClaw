@@ -38,9 +38,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/gardennchen/ShareClaw"
-Repository = "https://github.com/gardennchen/ShareClaw"
-Issues = "https://github.com/gardennchen/ShareClaw/issues"
+Homepage = "https://github.com/GardenChan/ShareClaw"
+Repository = "https://github.com/GardenChan/ShareClaw"
+Issues = "https://github.com/GardenChan/ShareClaw/issues"
 
 [project.scripts]
 shareclaw = "shareclaw.cli:main"

@@ -299,7 +299,7 @@ ShareClaw is in its early stages. Planned directions include:
 ## Development
 
 ```bash
-git clone https://github.com/gardennchen/ShareClaw.git
+git clone https://github.com/GardenChan/ShareClaw.git
 cd ShareClaw
 pip install -e ".[dev]"
 python -m pytest tests/ -v
@@ -311,7 +311,7 @@ python -m pytest tests/ -v
 
 ShareClaw is open source and welcomes contributions of all kinds:
 
-- 🐛 **Bug reports**: Open an [Issue](https://github.com/gardennchen/ShareClaw/issues)
+- 🐛 **Bug reports**: Open an [Issue](https://github.com/GardenChan/ShareClaw/issues)
 - 💡 **Feature ideas**: Describe your idea in an Issue
 - 🔧 **Code contributions**: Fork → Branch → PR
 - 📖 **Documentation**: Fix typos, add explanations

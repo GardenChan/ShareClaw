@@ -126,6 +126,7 @@ class SharingStore:
                 "default_quota_hours": 8,
                 "auto_evict_enabled": False,
                 "auto_evict_after_hours": 8,
+                "account_isolation_enabled": False,
             })
 
     def write_settings(self, settings: dict) -> None:

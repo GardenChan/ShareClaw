@@ -6,6 +6,7 @@
 <title>拼虾虾 — 拼着养更划算</title>
 <link rel="icon" href="/logo.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -122,6 +123,8 @@ body{
 .qr-box.scanning{border-color:var(--accent);background:var(--accent-light)}
 .qr-label{font-size:13px;color:var(--text-2);margin-bottom:12px;font-weight:500}
 .qr-code{white-space:pre;font-family:var(--mono);font-size:4px;line-height:1.05;letter-spacing:.8px;color:var(--text);display:inline-block;padding:8px;background:var(--white);border-radius:8px;border:1px solid var(--border)}
+#qrCanvas{display:inline-block}
+#qrCanvas img,#qrCanvas canvas{border-radius:8px;max-width:220px;max-height:220px}
 .qr-link{margin-top:12px;padding:8px 12px;background:var(--white);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .2s}
 .qr-link:hover{border-color:var(--accent)}
 .qr-link-icon{flex-shrink:0;width:14px;height:14px;color:var(--text-3)}
@@ -204,7 +207,8 @@ body{
         <div class="qr-area" id="qrArea">
           <div class="qr-box" id="qrBox">
             <div class="qr-label">用微信扫一扫下面的二维码</div>
-            <div class="qr-code" id="qrCode"></div>
+            <div id="qrCanvas" style="display:none;margin:0 auto"></div>
+            <div class="qr-code" id="qrCode" style="display:none"></div>
             <div class="qr-link" id="qrLink" style="display:none" onclick="copyQrUrl()">
               <svg class="qr-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
               <a class="qr-link-url" id="qrLinkUrl" href="#" target="_blank" rel="noopener" onclick="event.stopPropagation()"></a>
@@ -237,7 +241,7 @@ body{
   <div class="footer">
     <a href="/dashboard">我是虾主</a>
     <span class="footer-sep">·</span>
-    <a href="https://github.com/gardennchen/ShareClaw" target="_blank" rel="noopener">
+    <a href="https://github.com/GardenChan/ShareClaw" target="_blank" rel="noopener">
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
       GitHub
     </a>
@@ -256,9 +260,11 @@ const STAGE = {
   selecting_instance:{text:'正在寻找最佳服务器...', pct:25},
   query_status:      {text:'正在检查当前状态...',   pct:30},
   evict:             {text:'正在腾出位置...',       pct:45},
+  isolation_cleanup: {text:'正在清理旧账号配置...', pct:48},
   qrcode:            {text:'请扫码登录微信',       pct:55},
   login_complete:    {text:'登录成功，正在部署...', pct:70},
   enqueue:           {text:'你的微信已加入队列',   pct:80},
+  isolation_setup:   {text:'正在配置独立 Agent...', pct:85},
   restart_gateway:   {text:'正在启动服务...',       pct:90},
   done:              {text:'搞定！',               pct:100},
 };
@@ -275,34 +281,42 @@ function setTrack(p){document.getElementById('trackFill').style.width=p+'%';docu
 function setText(t){document.getElementById('stageText').textContent=t}
 function setCard(s){document.getElementById('card').className='card'+(s?' '+s:'')}
 function showQR(d){
-  /* 解析原始数据：提取纯二维码图案和链接 */
+  /* 解析原始数据：提取链接 */
   const lines = d.split('\n');
-  const qrLines = [];
   let url = '';
 
   for(const line of lines){
     const trimmed = line.trim();
-    /* 提取 URL */
     if(/https?:\/\//.test(trimmed)){
       const m = trimmed.match(/(https?:\/\/\S+)/);
       if(m) url = m[1];
     }
-    /* 二维码行：包含 █ 或 ▀ 或 ▄ 等 block 字符 */
-    if(/[█▀▄▌▐░▒▓\u2580-\u259F\u2588]/.test(trimmed) && trimmed.length > 5){
-      qrLines.push(line);
-    }
   }
 
+  const canvasEl = document.getElementById('qrCanvas');
   const qrEl = document.getElementById('qrCode');
-  if(qrLines.length > 0){
-    qrEl.textContent = qrLines.join('\n');
+
+  /* 优先用 URL 生成图片二维码 */
+  if(url && typeof QRCode !== 'undefined'){
+    canvasEl.innerHTML='';
+    canvasEl.style.display='inline-block';
+    qrEl.style.display='none';
+    try{
+      new QRCode(canvasEl, {
+        text: url,
+        width: 220,
+        height: 220,
+        colorDark: '#1A1A2E',
+        colorLight: '#FFFFFF',
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+    }catch(e){
+      canvasEl.style.display='none';
+      _showTextQR(d, lines, qrEl);
+    }
   } else {
-    /* 没有提取到 block 字符，回退显示原始内容（去掉提示文字） */
-    const filtered = lines.filter(l => {
-      const t = l.trim();
-      return t && !t.startsWith('使用微信') && !t.startsWith('如果二维码') && !t.startsWith('等待连接');
-    });
-    qrEl.textContent = filtered.join('\n');
+    canvasEl.style.display='none';
+    _showTextQR(d, lines, qrEl);
   }
 
   /* 展示链接 */
@@ -320,6 +334,26 @@ function showQR(d){
   document.getElementById('qrBox').classList.add('scanning');
   document.getElementById('qrArea').classList.add('visible');
 }
+
+function _showTextQR(d, lines, qrEl){
+  qrEl.style.display='inline-block';
+  const qrLines = [];
+  for(const line of lines){
+    const trimmed = line.trim();
+    if(/[█▀▄▌▐░▒▓\u2580-\u259F\u2588]/.test(trimmed) && trimmed.length > 5){
+      qrLines.push(line);
+    }
+  }
+  if(qrLines.length > 0){
+    qrEl.textContent = qrLines.join('\n');
+  } else {
+    const filtered = lines.filter(l => {
+      const t = l.trim();
+      return t && !t.startsWith('使用微信') && !t.startsWith('如果二维码') && !t.startsWith('等待连接');
+    });
+    qrEl.textContent = filtered.join('\n');
+  }
+}
 function copyQrUrl(){
   if(window._qrUrl){
     navigator.clipboard.writeText(window._qrUrl);
@@ -331,6 +365,8 @@ function copyQrUrl(){
 function hideQR(){
   document.getElementById('qrBox').classList.remove('scanning');
   document.getElementById('qrArea').classList.remove('visible');
+  document.getElementById('qrCanvas').style.display='none';
+  document.getElementById('qrCode').style.display='none';
 }
 function showResult(type,iconSvg,title,desc){
   const box=document.getElementById('resultBox');
@@ -342,6 +378,15 @@ function showResult(type,iconSvg,title,desc){
 }
 
 function startSync(){
+  const name=(document.getElementById('inputName').value||'').trim();
+  if(!name){
+    document.getElementById('inputName').style.borderColor='var(--red)';
+    document.getElementById('inputName').setAttribute('placeholder','请输入昵称后再开始');
+    document.getElementById('inputName').focus();
+    return;
+  }
+  document.getElementById('inputName').style.borderColor='';
+
   const btn=document.getElementById('actionBtn');
   btn.disabled=true;
   btn.innerHTML='<div class="spinner"></div> 接入中...';
@@ -361,12 +406,11 @@ function startSync(){
   setText('正在连接...');
   setTrack(0);
 
-  const name=(document.getElementById('inputName').value||'').trim();
   const invite=(document.getElementById('inputInvite').value||'').trim();
-  const userId=name||('user_'+Date.now());
+  const userId=name;
   const q=new URLSearchParams();
   q.set('user_id',userId);
-  if(name)q.set('user_name',name);
+  q.set('user_name',name);
   if(invite)q.set('invite',invite);
 
   const es=new EventSource('/rotate?'+q);

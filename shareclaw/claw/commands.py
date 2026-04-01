@@ -111,3 +111,96 @@ def cmd_delete_provider(provider_name: str) -> str:
         f"~/.openclaw/openclaw.json > /tmp/_oc_tmp.json && "
         f"mv /tmp/_oc_tmp.json ~/.openclaw/openclaw.json"
     )
+
+
+# ── 微信账号强隔离（独立 Agent） ───────────────────────────
+
+def cmd_create_agent(agent_id: str) -> str:
+    """
+    创建独立 Agent（工作区 + agent 目录）。
+
+    openclaw agents add 在非交互模式下只需指定 id 和路径。
+    """
+    workspace = f"~/.openclaw/workspace-{agent_id}"
+    agent_dir = f"~/.openclaw/agents/{agent_id}/agent"
+    return (
+        f"openclaw agents add {agent_id} "
+        f"--workspace {workspace} "
+        f"--agent-dir {agent_dir} "
+        f"--non-interactive"
+    )
+
+
+def cmd_add_binding(agent_id: str, account_id: str) -> str:
+    """
+    构建 jq 命令：为指定 accountId 添加 binding 路由到独立 Agent。
+
+    在 openclaw.json 的 bindings 数组中追加一条规则，
+    将 openclaw-weixin 渠道中该 accountId 的消息路由到 agent_id。
+    """
+    import json as _json
+    binding = _json.dumps({
+        "agentId": agent_id,
+        "match": {
+            "channel": "openclaw-weixin",
+            "accountId": account_id,
+        },
+    }, ensure_ascii=False)
+    encoded = base64.b64encode(binding.encode("utf-8")).decode("utf-8")
+    return (
+        f"BIND=$(echo '{encoded}' | base64 -d) && "
+        f"jq --argjson newbind \"$BIND\" "
+        f"'if .bindings then .bindings += [$newbind] else .bindings = [$newbind] end' "
+        f"~/.openclaw/openclaw.json > /tmp/_oc_tmp.json && "
+        f"mv /tmp/_oc_tmp.json ~/.openclaw/openclaw.json"
+    )
+
+
+def cmd_remove_binding(account_id: str) -> str:
+    """
+    构建 jq 命令：移除指定 accountId 的 binding 路由。
+    """
+    return (
+        f"jq 'if .bindings then .bindings |= map(select("
+        f".match.accountId != \"{account_id}\""
+        f")) else . end' "
+        f"~/.openclaw/openclaw.json > /tmp/_oc_tmp.json && "
+        f"mv /tmp/_oc_tmp.json ~/.openclaw/openclaw.json"
+    )
+
+
+def cmd_remove_agent(agent_id: str) -> str:
+    """
+    构建 jq 命令：从 agents.list 中移除指定 Agent。
+    """
+    return (
+        f"jq 'if .agents.list then .agents.list |= map(select("
+        f".id != \"{agent_id}\""
+        f")) else . end' "
+        f"~/.openclaw/openclaw.json > /tmp/_oc_tmp.json && "
+        f"mv /tmp/_oc_tmp.json ~/.openclaw/openclaw.json"
+    )
+
+
+def cmd_list_bindings() -> str:
+    """读取当前 bindings 配置"""
+    return "jq '.bindings // []' ~/.openclaw/openclaw.json 2>/dev/null || echo '[]'"
+
+
+def cmd_list_agents() -> str:
+    """读取当前 agents.list 配置"""
+    return "jq '.agents.list // []' ~/.openclaw/openclaw.json 2>/dev/null || echo '[]'"
+
+
+def cmd_cleanup_agent_dirs(agent_id: str) -> str:
+    """
+    删除 Agent 的工作区、agent 目录和 sessions 目录。
+
+    清理以下路径：
+    - ~/.openclaw/workspace-<agentId>/（工作区，含文件和记忆）
+    - ~/.openclaw/agents/<agentId>/（agent 目录，含人格和认证）
+    """
+    return (
+        f"rm -rf ~/.openclaw/workspace-{agent_id} "
+        f"~/.openclaw/agents/{agent_id}"
+    )

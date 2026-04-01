@@ -297,7 +297,7 @@ ShareClaw 正处于早期阶段，以下是计划中的方向：
 ## 开发
 
 ```bash
-git clone https://github.com/gardennchen/ShareClaw.git
+git clone https://github.com/GardenChan/ShareClaw.git
 cd ShareClaw
 pip install -e ".[dev]"
 python -m pytest tests/ -v
@@ -309,7 +309,7 @@ python -m pytest tests/ -v
 
 ShareClaw 是一个开源项目，欢迎任何形式的贡献：
 
-- 🐛 **Bug 报告**：提交 [Issue](https://github.com/gardennchen/ShareClaw/issues)
+- 🐛 **Bug 报告**：提交 [Issue](https://github.com/GardenChan/ShareClaw/issues)
 - 💡 **功能建议**：在 Issue 中描述你的想法
 - 🔧 **代码贡献**：Fork → Branch → PR
 - 📖 **文档改进**：修正错别字、补充说明
