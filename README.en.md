@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/gardennchen/ShareClaw/main/shareclaw.png" alt="ShareClaw Logo" width="160">
+  <img src="https://raw.githubusercontent.com/GardenChan/ShareClaw/main/shareclaw.png" alt="ShareClaw Logo" width="160">
 </p>
 
 <h1 align="center">ShareClaw</h1>
