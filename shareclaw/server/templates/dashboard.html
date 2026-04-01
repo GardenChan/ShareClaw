@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>拼虾虾 — 管理面板</title>
+<link rel="icon" href="/logo.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#F7F8FA;--white:#FFF;--text:#1A1A2E;--text-2:#5A5A72;--text-3:#9999AD;
+  --accent:#E53935;--accent-light:#FFEBEE;--accent-hover:#C62828;
+  --green:#10B981;--green-light:#ECFDF5;--green-text:#065F46;
+  --red:#E53935;--red-light:#FFEBEE;--red-text:#B71C1C;
+  --amber:#F59E0B;--amber-light:#FFFBEB;
+  --border:#E8E8EE;--shadow:0 1px 3px rgba(0,0,0,.05);
+  --radius:14px;--radius-sm:10px;
+  --sans:'Noto Sans SC','Inter',-apple-system,sans-serif;
+  --mono:'SF Mono','Menlo',monospace;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;padding:24px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:820px;margin:0 auto}
+
+/* 头部 */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.header-left{display:flex;align-items:center;gap:10px}
+.header-left span.emoji{font-size:28px}
+.header-left h1{font-size:20px;font-weight:700}
+.header-left .sub{font-size:12px;color:var(--accent);font-weight:500;margin-left:2px}
+.header-right a{color:var(--accent);text-decoration:none;font-size:13px;font-weight:500}
+.header-right a:hover{text-decoration:underline}
+
+/* 统计 */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat{background:var(--white);border-radius:var(--radius-sm);padding:18px;text-align:center;box-shadow:var(--shadow)}
+.stat-val{font-family:var(--mono);font-size:26px;font-weight:700;margin-bottom:2px}
+.stat-lbl{font-size:11px;color:var(--text-3);font-weight:500}
+.stat-green .stat-val{color:var(--green)}
+.stat-accent .stat-val{color:var(--accent)}
+.stat-amber .stat-val{color:var(--amber)}
+
+/* 卡片 */
+.card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+.card-hd{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.card-hd h3{font-size:14px;font-weight:600;color:var(--text)}
+.card-bd{padding:16px 20px}
+
+/* 表格 */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--text-3);font-weight:500;padding:6px 10px;font-size:11px}
+td{padding:9px 10px;border-top:1px solid var(--border);color:var(--text-2)}
+tr:hover td{background:var(--bg)}
+
+/* 徽标 */
+.tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
+.tag-on{background:var(--green-light);color:var(--green-text)}
+.tag-off{background:var(--bg);color:var(--text-3)}
+.tag-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+/* 按钮 */
+.btn{padding:7px 14px;border:none;border-radius:var(--radius-sm);font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-primary:disabled{opacity:.6;cursor:wait}
+.btn-outline{background:transparent;color:var(--red);border:1px solid var(--red)}
+.btn-outline:hover{background:var(--red-light)}
+.btn-spinner{width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:bspin .6s linear infinite;flex-shrink:0}
+.btn-outline .btn-spinner{border-color:rgba(239,68,68,.3);border-top-color:var(--red)}
+@keyframes bspin{to{transform:rotate(360deg)}}
+
+/* 输入 */
+input[type="text"],input[type="number"]{
+  background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  padding:8px 12px;color:var(--text);font-family:var(--sans);font-size:13px;width:100%;outline:none;
+}
+input:focus{border-color:var(--accent)}
+.form-row{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.form-row label{font-size:12px;color:var(--text-2);min-width:110px;font-weight:500}
+.form-row input{flex:1}
+
+/* 开关 */
+.sw{display:inline-flex;align-items:center;width:44px;height:24px;background:#ccc;border-radius:12px;cursor:pointer;transition:.3s;flex-shrink:0;position:relative}
+.sw.on{background:var(--accent)}
+.sw-dot{width:18px;height:18px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2);position:absolute;left:3px;top:3px;transition:.3s}
+.sw.on .sw-dot{left:23px}
+
+/* 邀请码 */
+.code{font-family:var(--mono);font-size:13px;padding:4px 8px;background:var(--bg);border-radius:6px;cursor:pointer}
+.code:hover{background:var(--border)}
+.url{font-family:var(--mono);font-size:10px;color:var(--text-3);word-break:break-all;margin-top:3px}
+
+/* 费用 */
+.cost{text-align:center;padding:16px}
+.cost-main{font-family:var(--mono);font-size:40px;font-weight:700;color:var(--accent)}
+.cost-main small{font-size:14px;color:var(--text-3);font-weight:400}
+.cost-sub{font-size:12px;color:var(--text-3);margin-top:4px}
+
+.empty{text-align:center;padding:24px;color:var(--text-3);font-size:13px}
+.footer{text-align:center;margin-top:24px;font-size:11px;color:var(--text-3)}
+.footer a{color:var(--accent);text-decoration:none;font-weight:500}
+
+@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}body{padding:16px}}
+</style>
+</head>
+<body>
+<!-- 密码登录遮罩 -->
+<div id="loginOverlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center">
+  <div style="width:100%;max-width:340px;padding:20px;text-align:center">
+    <img src="/logo.png" alt="ShareClaw" style="width:48px;height:48px;border-radius:12px;margin-bottom:12px">
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:4px">虾主登录</h2>
+    <p style="font-size:13px;color:var(--text-3);margin-bottom:24px">输入管理密码进入面板</p>
+    <input type="password" id="loginPwd" placeholder="管理密码"
+      style="width:100%;padding:12px 14px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;color:var(--text);outline:none;margin-bottom:12px;font-family:var(--sans)"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <div id="loginErr" style="font-size:12px;color:var(--red);margin-bottom:10px;min-height:16px"></div>
+    <button onclick="doLogin()" style="width:100%;padding:12px;border:none;border-radius:var(--radius-sm);background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--sans)">进入管理面板</button>
+    <div style="margin-top:16px"><a href="/" style="font-size:12px;color:var(--text-3);text-decoration:none">← 回到接入页</a></div>
+  </div>
+</div>
+
+<div class="wrap" id="mainWrap" style="display:none">
+  <div class="header">
+    <div class="header-left">
+      <img src="/logo.png" alt="ShareClaw" style="width:28px;height:28px;border-radius:7px">
+      <h1>管理面板</h1>
+      <span class="sub">拼虾虾</span>
+    </div>
+    <div class="header-right"><a href="/">← 回到接入页</a></div>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="stat stat-green"><div class="stat-val" id="sOn">-</div><div class="stat-lbl">在线坐席</div></div>
+    <div class="stat stat-accent"><div class="stat-val" id="sUsers">-</div><div class="stat-lbl">共养人数</div></div>
+    <div class="stat"><div class="stat-val" id="sQueue">-</div><div class="stat-lbl">队列上限</div></div>
+    <div class="stat stat-amber"><div class="stat-val" id="sCost">-</div><div class="stat-lbl">人均月费</div></div>
+  </div>
+
+  <!-- 模型配置 -->
+  <div class="card">
+    <div class="card-hd"><h3>大模型配置</h3><button class="btn btn-primary btn-sm" onclick="showAddModel()">+ 添加模型</button></div>
+    <div class="card-bd">
+      <div id="modelStatusBox"><div class="empty">加载中...</div></div>
+      <div id="modelConfigsBox" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- 添加模型弹窗 -->
+  <div id="modelDialog" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:100;display:none;align-items:center;justify-content:center">
+    <div style="background:var(--white);border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.15);width:100%;max-width:460px;padding:24px;margin:20px">
+      <h3 style="font-size:16px;font-weight:600;margin-bottom:16px">添加大模型</h3>
+      <div class="form-row"><label>备注名称</label><input type="text" id="mName" placeholder="如：MiniMax M2.7"></div>
+      <div class="form-row"><label>Base URL</label><input type="text" id="mUrl" placeholder="如：https://api.minimaxi.com/anthropic"></div>
+      <div class="form-row"><label>API 类型</label>
+        <select id="mApi" style="flex:1;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none">
+          <option value="openai-completions">openai-completions</option>
+          <option value="anthropic-messages">anthropic-messages</option>
+        </select>
+      </div>
+      <div class="form-row"><label>API Key</label><input type="text" id="mKey" placeholder="sk-xxx"></div>
+      <div class="form-row"><label>模型 ID</label><input type="text" id="mModelId" placeholder="如：MiniMax-M2.7"></div>
+      <div class="form-row"><label>模型名称</label><input type="text" id="mModelName" placeholder="如：MiniMax M2.7"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn" style="background:var(--bg);color:var(--text-2)" onclick="hideAddModel()">取消</button>
+        <button class="btn btn-primary" id="mSubmitBtn" onclick="submitModel()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card"><div class="card-hd"><h3>当前在线</h3></div><div class="card-bd" id="activeBox"><div class="empty">暂无在线坐席</div></div></div>
+  <div class="card"><div class="card-hd"><h3>共养人</h3></div><div class="card-bd" id="usersBox"><div class="empty">还没有人加入</div></div></div>
+  <div class="card"><div class="card-hd"><h3>邀请码</h3><button class="btn btn-primary btn-sm" onclick="createInvite()">+ 生成</button></div><div class="card-bd" id="invBox"><div class="empty">点击上方按钮生成邀请码</div></div></div>
+
+  <div class="card"><div class="card-hd"><h3>费用分摊</h3></div>
+    <div class="card-bd">
+      <div class="cost">
+        <div class="cost-sub">本月服务器费用 <span id="cTotal">¥0</span></div>
+        <div class="cost-main" id="cPer">¥0<small>/人·月</small></div>
+        <div class="cost-sub" id="cDesc">共 0 人分摊</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card"><div class="card-hd"><h3>历史记录</h3></div><div class="card-bd" id="histBox"><div class="empty">暂无轮转记录</div></div></div>
+
+  <div class="card"><div class="card-hd"><h3>设置</h3><button class="btn btn-primary btn-sm" onclick="saveSettings()">保存</button></div>
+    <div class="card-bd">
+      <div class="form-row"><label>每月费用 (¥)</label><input type="number" id="sCostVal" placeholder="0" min="0"></div>
+      <div class="form-row"><label>每人每日配额 (h)</label><input type="number" id="sQuotaVal" placeholder="8" min="1" max="24"></div>
+      <div class="form-row"><label>需要邀请码</label><div class="sw" id="sInv" onclick="this.classList.toggle('on')"><div class="sw-dot"></div></div></div>
+      <div class="form-row"><label>自动踢出超额</label><div class="sw" id="sAuto" onclick="this.classList.toggle('on')"><div class="sw-dot"></div></div></div>
+    </div>
+  </div>
+
+  <div class="footer"><a href="https://github.com/gardennchen/ShareClaw" target="_blank" style="display:inline-flex;align-items:center;gap:4px"><svg viewBox="0 0 16 16" fill="currentColor" style="width:13px;height:13px"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a></div>
+</div>
+
+<script>
+let adminToken = localStorage.getItem('shareclaw_admin_token') || '';
+
+function authHeaders() {
+  return adminToken ? {'X-Admin-Token': adminToken, 'Content-Type': 'application/json'} : {'Content-Type': 'application/json'};
+}
+
+async function checkAuth() {
+  try {
+    const r = await fetch('/api/admin/check', {headers: authHeaders()});
+    const d = await r.json();
+    if (!d.has_password) {
+      // 未设密码，直接进入
+      showMain(); return;
+    }
+    if (d.ok) {
+      showMain(); return;
+    }
+    // 需要登录
+    showLogin();
+  } catch(e) { showLogin(); }
+}
+
+function showLogin() {
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('mainWrap').style.display = 'none';
+  setTimeout(() => document.getElementById('loginPwd').focus(), 100);
+}
+
+function showMain() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('mainWrap').style.display = '';
+  load();
+  loadModels();
+}
+
+async function doLogin() {
+  const pwd = document.getElementById('loginPwd').value;
+  const errEl = document.getElementById('loginErr');
+  errEl.textContent = '';
+  try {
+    const r = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: pwd}),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      adminToken = d.token;
+      localStorage.setItem('shareclaw_admin_token', adminToken);
+      showMain();
+    } else {
+      errEl.textContent = d.message || '密码不对';
+    }
+  } catch(e) { errEl.textContent = '网络错误'; }
+}
+
+function fmt(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h>0?h+'h'+m+'m':m+'m'}
+
+async function load(){
+  try{
+    const hd = authHeaders();
+    const[st,us,hi,iv,co]=await Promise.all([
+      fetch('/api/status',{headers:hd}).then(r=>r.json()),
+      fetch('/api/users',{headers:hd}).then(r=>r.json()),
+      fetch('/api/history',{headers:hd}).then(r=>r.json()),
+      fetch('/api/invitations',{headers:hd}).then(r=>r.json()),
+      fetch('/api/cost-split',{headers:hd}).then(r=>r.json()),
+    ]);
+    document.getElementById('sOn').textContent=st.online_count;
+    document.getElementById('sUsers').textContent=st.total_users;
+    document.getElementById('sQueue').textContent=st.max_queue_size;
+    document.getElementById('sCost').textContent=co.total_users>0?'¥'+co.cost_per_user:'-';
+
+    // 在线
+    const ab=document.getElementById('activeBox');
+    if(!st.active_users.length){ab.innerHTML='<div class="empty">暂无在线坐席</div>'}
+    else{let h='<table><tr><th>用户</th><th>已用时长</th><th>今日配额</th></tr>';
+      st.active_users.forEach(u=>{const p=Math.min(100,Math.round(u.today_used_seconds/(u.quota_hours*3600)*100));
+        h+='<tr><td>'+u.name+'</td><td>'+fmt(u.duration_seconds)+'</td><td>'+p+'%</td></tr>'});
+      ab.innerHTML=h+'</table>'}
+
+    // 用户
+    const ub=document.getElementById('usersBox');
+    if(!us.length){ub.innerHTML='<div class="empty">还没有人加入</div>'}
+    else{let h='<table><tr><th>用户</th><th>状态</th><th>今日已用</th><th>总轮转</th></tr>';
+      us.forEach(u=>{const t=u.is_online?'<span class="tag tag-on"><span class="tag-dot"></span>在线</span>':'<span class="tag tag-off">离线</span>';
+        h+='<tr><td>'+u.name+'</td><td>'+t+'</td><td>'+fmt(u.today_used_seconds)+'</td><td>'+u.total_rotations+'</td></tr>'});
+      ub.innerHTML=h+'</table>'}
+
+    // 邀请码
+    const ib=document.getElementById('invBox');
+    const codes=Object.entries(iv);
+    if(!codes.length){ib.innerHTML='<div class="empty">点击上方按钮生成邀请码</div>'}
+    else{let h='<table><tr><th>邀请码</th><th>状态</th><th></th></tr>';
+      codes.forEach(([c,v])=>{const used=v.used_count>=1;const st=used?'<span class="tag tag-off">已使用'+(v.used_by?' · '+v.used_by:'')+'</span>':'<span class="tag tag-on"><span class="tag-dot"></span>可用</span>';
+        h+='<tr><td><span class="code" onclick="copyCode(\''+c+'\')" title="点击复制链接">'+c+'</span><div class="url">'+location.origin+'/?invite='+c+'</div></td><td>'+st+'</td><td><button class="btn btn-outline btn-sm" onclick="delInv(\''+c+'\')">删除</button></td></tr>'});
+      ib.innerHTML=h+'</table>'}
+
+    // 费用
+    document.getElementById('cTotal').textContent='¥'+co.monthly_cost;
+    document.getElementById('cPer').innerHTML=co.total_users>0?'¥'+co.cost_per_user+'<small>/人·月</small>':'¥0<small>/人·月</small>';
+    document.getElementById('cDesc').textContent='共 '+co.total_users+' 人分摊';
+
+    // 历史
+    const hb=document.getElementById('histBox');
+    if(!hi.length){hb.innerHTML='<div class="empty">暂无轮转记录</div>'}
+    else{let h='<table><tr><th>用户</th><th>开始</th><th>结束</th><th>原因</th></tr>';
+      hi.slice(0,20).forEach(r=>{h+='<tr><td>'+(r.name||r.user)+'</td><td style="font-size:11px">'+(r.started_at||'-')+'</td><td style="font-size:11px">'+(r.ended_at||'<span style="color:var(--green)">进行中</span>')+'</td><td style="font-size:11px;color:var(--text-3)">'+(r.ended_reason||'-')+'</td></tr>'});
+      hb.innerHTML=h+'</table>'}
+
+    // 设置
+    document.getElementById('sCostVal').value=st.settings.monthly_cost||0;
+    document.getElementById('sQuotaVal').value=st.settings.default_quota_hours||8;
+    document.getElementById('sInv').classList.toggle('on',!!st.settings.require_invite);
+    document.getElementById('sAuto').classList.toggle('on',!!st.settings.auto_evict_enabled);
+  }catch(e){console.error(e)}
+}
+
+async function createInvite(){
+  const r=await fetch('/api/invitations',{method:'POST',headers:authHeaders(),body:JSON.stringify({})});
+  if(r.status===401){showLogin();return}
+  const d=await r.json();
+  alert('邀请链接已生成（一次性）：\n'+d.invite_url);load();
+}
+async function delInv(c){
+  if(!confirm('确定删除？'))return;
+  const r=await fetch('/api/invitations/'+c,{method:'DELETE',headers:authHeaders()});
+  if(r.status===401){showLogin();return}
+  load();
+}
+function copyCode(c){navigator.clipboard.writeText(location.origin+'/?invite='+c);alert('邀请链接已复制！')}
+async function saveSettings(){
+  const s={monthly_cost:parseFloat(document.getElementById('sCostVal').value)||0,default_quota_hours:parseInt(document.getElementById('sQuotaVal').value)||8,require_invite:document.getElementById('sInv').classList.contains('on'),auto_evict_enabled:document.getElementById('sAuto').classList.contains('on')};
+  const r=await fetch('/api/settings',{method:'PUT',headers:authHeaders(),body:JSON.stringify(s)});
+  if(r.status===401){showLogin();return}
+  alert('已保存！');load();
+}
+
+// ==================== 模型配置 ====================
+
+function showAddModel(){document.getElementById('modelDialog').style.display='flex'}
+function hideAddModel(){document.getElementById('modelDialog').style.display='none';
+  ['mName','mUrl','mKey','mModelId','mModelName'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('mApi').value='openai-completions';
+}
+
+async function submitModel(){
+  const d={name:document.getElementById('mName').value,base_url:document.getElementById('mUrl').value,
+    api_type:document.getElementById('mApi').value,api_key:document.getElementById('mKey').value,
+    model_id:document.getElementById('mModelId').value,model_name:document.getElementById('mModelName').value};
+  const btn=document.getElementById('mSubmitBtn');
+  btn.disabled=true;btn.textContent='保存中...';
+  try{
+    const r=await fetch('/api/models/configs',{method:'POST',headers:authHeaders(),body:JSON.stringify(d)});
+    if(r.status===401){showLogin();return}
+    const res=await r.json();
+    if(res.ok){hideAddModel();loadModels()}
+    else{btn.textContent=res.message||'保存失败'}
+  }catch(e){btn.textContent='保存失败'}
+  finally{setTimeout(()=>{btn.disabled=false;btn.textContent='保存'},1500)}
+}
+
+async function loadModels(){
+  const hd=authHeaders();
+  try{
+    const[cfgRes,stRes]=await Promise.all([
+      fetch('/api/models/configs',{headers:hd}).then(r=>r.json()),
+      fetch('/api/models/status',{headers:hd}).then(r=>r.json()),
+    ]);
+
+    // 实例上已配置的 providers
+    const sb=document.getElementById('modelStatusBox');
+    if(stRes.configured && stRes.providers && stRes.providers.length){
+      let h='<p style="font-size:12px;color:var(--text-3);margin-bottom:8px">实例上已配置的模型：</p><table><tr><th>模型</th><th>Provider</th><th>状态</th><th></th></tr>';
+      stRes.providers.forEach(p=>{
+        const st=p.is_active?'<span class="tag tag-on"><span class="tag-dot"></span>应用中</span>':'<span class="tag tag-off">未应用</span>';
+        const btns=p.is_active?''
+          :'<button class="btn btn-sm" style="background:var(--accent);color:#fff;margin-right:4px" onclick="switchModel(\''+p.provider_name+'\',\''+p.model_id+'\')">切换应用</button>'
+           +'<button class="btn btn-outline btn-sm" onclick="removeProvider(\''+p.provider_name+'\')">移除</button>';
+        h+='<tr><td>'+p.model_name+'</td><td style="font-size:11px;color:var(--text-3)">'+p.provider_name+'</td><td>'+st+'</td><td>'+btns+'</td></tr>';
+      });
+      sb.innerHTML=h+'</table>';
+    } else {
+      sb.innerHTML='<div class="empty" style="padding:12px">实例上暂未配置模型</div>';
+    }
+
+    // 预配置的模型列表（可一键应用）
+    const cb=document.getElementById('modelConfigsBox');
+    if(cfgRes.length){
+      let h='<p style="font-size:12px;color:var(--text-3);margin-bottom:8px">模型库（虾主预配置，点击"应用"部署到实例）：</p><table><tr><th>名称</th><th>模型</th><th>API</th><th></th></tr>';
+      cfgRes.forEach(c=>{
+        h+='<tr><td>'+c.name+'</td><td style="font-size:11px">'+c.model_name+'</td><td style="font-size:11px;color:var(--text-3)">'+c.api_type+'</td>'
+          +'<td><button class="btn btn-primary btn-sm" onclick="applyModel('+c.id+')">应用</button> '
+          +'<button class="btn btn-outline btn-sm" onclick="delModelCfg('+c.id+')">删除</button></td></tr>';
+      });
+      cb.innerHTML=h+'</table>';
+    } else {
+      cb.innerHTML='<div class="empty" style="padding:8px">点击右上角"+ 添加模型"预配置模型密钥</div>';
+    }
+  }catch(e){console.error('loadModels',e)}
+}
+
+async function applyModel(id){
+  const btn=event.target;btn.disabled=true;btn.innerHTML='<span class="btn-spinner"></span>应用中...';
+  try{
+    const r=await fetch('/api/models/apply',{method:'POST',headers:authHeaders(),body:JSON.stringify({config_id:id})});
+    if(r.status===401){showLogin();return}
+    const d=await r.json();
+    btn.innerHTML=d.ok?'已应用':'失败';
+    loadModels();
+  }catch(e){btn.innerHTML='失败'}
+  finally{setTimeout(()=>{btn.disabled=false;btn.innerHTML='应用'},2000)}
+}
+async function switchModel(pname,mid){
+  const btn=event.target;btn.disabled=true;btn.innerHTML='<span class="btn-spinner"></span>切换中...';
+  try{
+    const r=await fetch('/api/models/switch',{method:'POST',headers:authHeaders(),body:JSON.stringify({provider_name:pname,model_id:mid})});
+    if(r.status===401){showLogin();return}
+    await r.json();
+    loadModels();
+  }catch(e){}
+  finally{setTimeout(()=>{if(btn){btn.disabled=false;btn.innerHTML='切换应用'}},2000)}
+}
+async function removeProvider(pname){
+  const btn=event.target;btn.disabled=true;btn.innerHTML='<span class="btn-spinner"></span>移除中...';
+  try{
+    const r=await fetch('/api/models/remove-provider',{method:'POST',headers:authHeaders(),body:JSON.stringify({provider_name:pname})});
+    if(r.status===401){showLogin();return}
+    await r.json();
+    loadModels();
+  }catch(e){}
+  finally{setTimeout(()=>{if(btn){btn.disabled=false;btn.innerHTML='移除'}},2000)}
+}
+async function delModelCfg(id){
+  event.target.disabled=true;
+  const r=await fetch('/api/models/configs/'+id,{method:'DELETE',headers:authHeaders()});
+  if(r.status===401){showLogin();return}
+  loadModels();
+}
+
+// 启动
+checkAuth();
+setInterval(()=>{if(document.getElementById('mainWrap').style.display!=='none')load()},15000);
+</script>
+</body>
+</html>

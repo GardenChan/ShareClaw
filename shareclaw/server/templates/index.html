@@ -3,408 +3,219 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ShareClaw — 节点同步</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>拼虾虾 — 拼着养更划算</title>
+<link rel="icon" href="/logo.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  :root{
-    --bg:#0A0A0F;
-    --surface:#12121A;
-    --surface-2:#1A1A25;
-    --surface-3:#22222F;
-    --border:rgba(255,255,255,.06);
-    --border-active:rgba(99,102,241,.4);
-    --text:#F0F0F5;
-    --text-2:rgba(240,240,245,.55);
-    --text-3:rgba(240,240,245,.3);
-    --accent:#818CF8;
-    --accent-dim:rgba(129,140,248,.15);
-    --accent-glow:rgba(129,140,248,.08);
-    --green:#34D399;
-    --green-dim:rgba(52,211,153,.12);
-    --red:#F87171;
-    --red-dim:rgba(248,113,113,.12);
-    --amber:#FBBF24;
-    --amber-dim:rgba(251,191,36,.1);
-    --radius:12px;
-    --radius-sm:8px;
-    --mono:'JetBrains Mono',monospace;
-    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  }
-  body{
-    font-family:var(--sans);
-    background:var(--bg);color:var(--text);
-    min-height:100vh;min-height:100dvh;
-    display:flex;align-items:center;justify-content:center;
-    padding:20px;
-    -webkit-font-smoothing:antialiased;
-    -moz-osx-font-smoothing:grayscale;
-  }
-  /* 背景微光 */
-  body::before{
-    content:'';position:fixed;top:-50%;left:-50%;
-    width:200%;height:200%;
-    background:radial-gradient(ellipse at 30% 20%,rgba(129,140,248,.04) 0%,transparent 50%),
-               radial-gradient(ellipse at 70% 80%,rgba(52,211,153,.03) 0%,transparent 50%);
-    pointer-events:none;z-index:0;
-  }
-  .container{width:100%;max-width:420px;position:relative;z-index:1}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#F7F8FA;
+  --white:#FFFFFF;
+  --text:#1A1A2E;
+  --text-2:#5A5A72;
+  --text-3:#9999AD;
+  --accent:#E53935;
+  --accent-light:#FFEBEE;
+  --accent-hover:#C62828;
+  --green:#10B981;
+  --green-light:#ECFDF5;
+  --green-text:#065F46;
+  --red:#E53935;
+  --red-light:#FFEBEE;
+  --red-text:#B71C1C;
+  --amber:#F59E0B;
+  --amber-light:#FFFBEB;
+  --border:#E8E8EE;
+  --border-focus:#E53935;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-lg:0 10px 25px rgba(0,0,0,.07),0 4px 10px rgba(0,0,0,.04);
+  --radius:16px;
+  --radius-sm:10px;
+  --sans:'Noto Sans SC','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'SF Mono','Menlo',monospace;
+}
+body{
+  font-family:var(--sans);
+  background:var(--bg);color:var(--text);
+  min-height:100vh;min-height:100dvh;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+  -webkit-font-smoothing:antialiased;
+}
+.container{width:100%;max-width:400px}
 
-  /* ===== 品牌区 ===== */
-  .brand{text-align:center;margin-bottom:36px}
-  .brand-logo{
-    display:inline-flex;align-items:center;gap:10px;
-    margin-bottom:16px;
-  }
-  .brand-mark{
-    width:48px;height:48px;border-radius:12px;
-    display:block;object-fit:contain;
-    filter:drop-shadow(0 0 18px rgba(129,140,248,.18));
-  }
-  .brand-name{
-    font-size:18px;font-weight:600;letter-spacing:-.02em;
-    color:var(--text);
-  }
-  .brand-tagline{
-    font-size:13px;color:var(--text-3);
-    letter-spacing:.04em;text-transform:uppercase;
-  }
+/* ===== 品牌区 ===== */
+.brand{text-align:center;margin-bottom:28px}
+.brand-logo{width:88px;height:88px;margin-bottom:12px;border-radius:20px}
+.brand-name{font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px}
+.brand-slogan{font-size:14px;color:var(--accent);font-weight:500}
 
-  /* ===== 主面板 ===== */
-  .panel{
-    background:var(--surface);
-    border:1px solid var(--border);
-    border-radius:var(--radius);
-    overflow:hidden;
-    transition:border-color .4s ease,box-shadow .4s ease;
-  }
-  .panel.active{
-    border-color:var(--border-active);
-    box-shadow:0 0 40px rgba(129,140,248,.06);
-  }
-  .panel.done{
-    border-color:rgba(52,211,153,.3);
-    box-shadow:0 0 40px rgba(52,211,153,.05);
-  }
-  .panel.error{
-    border-color:rgba(248,113,113,.3);
-    box-shadow:0 0 40px rgba(248,113,113,.05);
-  }
+/* ===== 卡片 ===== */
+.card{
+  background:var(--white);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  transition:box-shadow .3s ease;
+}
+.card.active{box-shadow:var(--shadow-lg)}
+.card.done{box-shadow:0 0 0 2px var(--green),var(--shadow)}
+.card.error{box-shadow:0 0 0 2px var(--red),var(--shadow)}
 
-  /* 面板头部 */
-  .panel-header{
-    padding:20px 24px 16px;
-    display:flex;align-items:center;justify-content:space-between;
-  }
-  .panel-title{
-    font-size:14px;font-weight:500;color:var(--text-2);
-    display:flex;align-items:center;gap:8px;
-  }
-  .panel-title svg{width:15px;height:15px;opacity:.6}
+.card-body{padding:28px 24px}
 
-  /* 状态徽标 */
-  .badge{
-    display:inline-flex;align-items:center;gap:5px;
-    padding:4px 10px;border-radius:20px;
-    font-size:11px;font-weight:500;letter-spacing:.02em;
-    transition:all .3s ease;
-  }
-  .badge-idle{background:var(--surface-3);color:var(--text-3)}
-  .badge-working{background:var(--accent-dim);color:var(--accent)}
-  .badge-scan{background:var(--amber-dim);color:var(--amber)}
-  .badge-success{background:var(--green-dim);color:var(--green)}
-  .badge-error{background:var(--red-dim);color:var(--red)}
-  .badge-dot{
-    width:6px;height:6px;border-radius:50%;
-    background:currentColor;flex-shrink:0;
-  }
-  .badge-working .badge-dot,
-  .badge-scan .badge-dot{
-    animation:pulse 1.5s ease-in-out infinite;
-  }
-  @keyframes pulse{
-    0%,100%{opacity:1;transform:scale(1)}
-    50%{opacity:.4;transform:scale(.8)}
-  }
+/* ===== 空闲态 ===== */
+.welcome{text-align:center}
+.welcome h2{font-size:18px;font-weight:600;margin-bottom:6px;color:var(--text)}
+.welcome p{font-size:13px;color:var(--text-3);line-height:1.6;margin-bottom:20px}
 
-  /* 分割线 */
-  .divider{height:1px;background:var(--border);margin:0 24px}
+/* 输入区 */
+.input-group{margin-bottom:12px;text-align:left}
+.input-group label{display:block;font-size:12px;color:var(--text-3);margin-bottom:5px;font-weight:500}
+.input-field{
+  width:100%;padding:11px 14px;
+  background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  font-size:14px;color:var(--text);font-family:var(--sans);
+  transition:border-color .2s,box-shadow .2s;
+  outline:none;
+}
+.input-field:focus{border-color:var(--border-focus);box-shadow:0 0 0 3px rgba(229,57,53,.1)}
+.input-field::placeholder{color:var(--text-3)}
+.input-field.mono{font-family:var(--mono);font-size:13px;letter-spacing:.5px}
+.input-hint{font-size:11px;color:var(--text-3);margin-top:4px}
 
-  /* ===== 内容区 ===== */
-  .panel-body{padding:20px 24px 24px}
+/* ===== 按钮 ===== */
+.btn-area{padding:0 24px 24px}
+.btn{
+  width:100%;padding:13px 20px;border:none;
+  border-radius:var(--radius-sm);
+  font-family:var(--sans);font-size:15px;font-weight:600;
+  cursor:pointer;transition:all .15s ease;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-hover);transform:translateY(-1px);box-shadow:0 4px 14px rgba(229,57,53,.3)}
+.btn-primary:active{transform:translateY(0);box-shadow:none}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.btn svg{width:16px;height:16px;flex-shrink:0}
 
-  /* 空闲态 - 引导文案 */
-  .idle-view{text-align:center;padding:20px 0}
-  .idle-icon{
-    width:56px;height:56px;border-radius:16px;
-    background:var(--surface-2);border:1px solid var(--border);
-    display:inline-flex;align-items:center;justify-content:center;
-    margin-bottom:16px;
-  }
-  .idle-icon svg{width:24px;height:24px;color:var(--text-3)}
-  .idle-title{
-    font-size:15px;font-weight:500;color:var(--text);
-    margin-bottom:6px;
-  }
-  .idle-desc{
-    font-size:13px;color:var(--text-3);line-height:1.6;
-    max-width:280px;margin:0 auto;
-  }
+/* ===== 进度态 ===== */
+.progress-view{display:none}
+.progress-view.visible{display:block}
 
-  /* 进度态 */
-  .progress-view{display:none}
-  .progress-view.visible{display:block}
+.track{height:4px;background:var(--border);border-radius:2px;margin-bottom:16px;overflow:hidden}
+.track-fill{height:100%;width:0;border-radius:2px;background:var(--accent);transition:width .5s ease}
+.track-fill.done{background:var(--green)}
+.track-fill.error{background:var(--red)}
 
-  /* 进度轨道 */
-  .track{
-    height:2px;background:var(--surface-3);
-    border-radius:1px;margin-bottom:20px;overflow:hidden;
-  }
-  .track-fill{
-    height:100%;width:0%;border-radius:1px;
-    background:linear-gradient(90deg,var(--accent),#A78BFA);
-    transition:width .6s cubic-bezier(.4,0,.2,1);
-  }
-  .track-fill.done{background:var(--green)}
-  .track-fill.error{background:var(--red)}
+.stage-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.stage-text{font-size:14px;color:var(--text-2)}
+.stage-pct{font-family:var(--mono);font-size:13px;color:var(--text-3);font-weight:500}
 
-  /* 阶段文字 */
-  .stage-info{
-    display:flex;align-items:center;justify-content:space-between;
-    margin-bottom:20px;
-  }
-  .stage-text{
-    font-size:13px;color:var(--text-2);
-    transition:opacity .3s ease;
-  }
-  .stage-pct{
-    font-family:var(--mono);font-size:12px;
-    color:var(--text-3);font-weight:500;
-  }
+/* ===== 二维码 ===== */
+.qr-area{max-height:0;opacity:0;overflow:hidden;transition:all .4s ease;margin-bottom:0}
+.qr-area.visible{max-height:600px;opacity:1;margin-bottom:16px}
+.qr-box{
+  background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  padding:20px 16px;text-align:center;
+}
+.qr-box.scanning{border-color:var(--accent);background:var(--accent-light)}
+.qr-label{font-size:13px;color:var(--text-2);margin-bottom:12px;font-weight:500}
+.qr-code{white-space:pre;font-family:var(--mono);font-size:4px;line-height:1.05;letter-spacing:.8px;color:var(--text);display:inline-block;padding:8px;background:var(--white);border-radius:8px;border:1px solid var(--border)}
+.qr-link{margin-top:12px;padding:8px 12px;background:var(--white);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .2s}
+.qr-link:hover{border-color:var(--accent)}
+.qr-link-icon{flex-shrink:0;width:14px;height:14px;color:var(--text-3)}
+.qr-link-url{flex:1;font-family:var(--mono);font-size:10px;color:var(--accent);word-break:break-all;text-align:left;text-decoration:none;line-height:1.4}
+.qr-link-copy{flex-shrink:0;font-size:10px;color:var(--text-3);font-weight:500;white-space:nowrap}
+.qr-tip{margin-top:10px;font-size:12px;color:var(--text-3)}
 
-  /* ===== 二维码区域 ===== */
-  .qr-area{
-    max-height:0;opacity:0;overflow:hidden;
-    transition:max-height .5s cubic-bezier(.4,0,.2,1),
-               opacity .4s ease,
-               margin .4s ease;
-    margin-bottom:0;
-  }
-  .qr-area.visible{
-    max-height:500px;opacity:1;
-    margin-bottom:20px;
-  }
-  .qr-frame{
-    background:var(--surface-2);
-    border:1px solid var(--border);
-    border-radius:var(--radius-sm);
-    padding:16px;text-align:center;
-    position:relative;
-    transition:border-color .3s ease;
-  }
-  .qr-frame.scanning{
-    border-color:var(--border-active);
-  }
-  .qr-frame.scanning::after{
-    content:'';position:absolute;inset:-1px;
-    border-radius:var(--radius-sm);
-    background:linear-gradient(135deg,rgba(129,140,248,.1),transparent,rgba(129,140,248,.05));
-    pointer-events:none;
-    animation:shimmer 3s ease-in-out infinite;
-  }
-  @keyframes shimmer{
-    0%,100%{opacity:.5}50%{opacity:1}
-  }
-  .qr-prompt{
-    font-size:12px;color:var(--text-3);margin-bottom:12px;
-    letter-spacing:.02em;
-  }
-  .qr-code{
-    white-space:pre;font-family:var(--mono);
-    font-size:4.5px;line-height:1.1;letter-spacing:1px;
-    color:var(--text);overflow-x:auto;
-  }
-  .qr-countdown{
-    margin-top:12px;font-family:var(--mono);
-    font-size:11px;color:var(--text-3);
-  }
+/* ===== 结果 ===== */
+.result{max-height:0;opacity:0;overflow:hidden;transition:all .4s ease;margin-bottom:0}
+.result.visible{max-height:150px;opacity:1;margin-bottom:16px}
+.result-box{padding:14px 16px;border-radius:var(--radius-sm);display:flex;align-items:center;gap:10px}
+.result-box.success{background:var(--green-light);color:var(--green-text)}
+.result-box.error{background:var(--red-light);color:var(--red-text)}
+.result-icon{flex-shrink:0;width:24px;height:24px}
+.result-icon svg{width:24px;height:24px}
+.result-body{flex:1}
+.result-title{font-size:14px;font-weight:600;margin-bottom:2px}
+.result-desc{font-size:12px;opacity:.75;line-height:1.4}
 
-  /* ===== 结果区域 ===== */
-  .result{
-    max-height:0;opacity:0;overflow:hidden;
-    transition:max-height .5s cubic-bezier(.4,0,.2,1),
-               opacity .4s ease,
-               margin .4s ease;
-    margin-bottom:0;
-  }
-  .result.visible{
-    max-height:200px;opacity:1;
-    margin-bottom:20px;
-  }
-  .result-inner{
-    padding:16px;border-radius:var(--radius-sm);
-    display:flex;align-items:flex-start;gap:12px;
-  }
-  .result-inner.success{
-    background:var(--green-dim);
-    border:1px solid rgba(52,211,153,.15);
-  }
-  .result-inner.error{
-    background:var(--red-dim);
-    border:1px solid rgba(248,113,113,.15);
-  }
-  .result-icon{
-    width:32px;height:32px;border-radius:8px;
-    display:flex;align-items:center;justify-content:center;
-    flex-shrink:0;
-  }
-  .result-inner.success .result-icon{background:rgba(52,211,153,.15)}
-  .result-inner.error .result-icon{background:rgba(248,113,113,.15)}
-  .result-icon svg{width:16px;height:16px}
-  .result-body{flex:1;min-width:0}
-  .result-title{
-    font-size:14px;font-weight:600;margin-bottom:2px;
-  }
-  .result-inner.success .result-title{color:var(--green)}
-  .result-inner.error .result-title{color:var(--red)}
-  .result-desc{
-    font-size:12px;line-height:1.5;
-  }
-  .result-inner.success .result-desc{color:rgba(52,211,153,.7)}
-  .result-inner.error .result-desc{color:rgba(248,113,113,.7)}
+/* ===== 加载 ===== */
+.spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-  /* ===== 按钮 ===== */
-  .action-area{padding:0 24px 24px}
-  .btn{
-    width:100%;padding:12px 20px;border:none;
-    border-radius:var(--radius-sm);
-    font-family:var(--sans);font-size:14px;font-weight:500;
-    cursor:pointer;transition:all .2s ease;
-    display:flex;align-items:center;justify-content:center;gap:8px;
-    position:relative;overflow:hidden;
-  }
-  .btn-primary{
-    background:var(--accent);color:#fff;
-  }
-  .btn-primary:hover{
-    background:#6366F1;
-    box-shadow:0 4px 20px rgba(129,140,248,.25);
-  }
-  .btn-primary:active{
-    transform:scale(.98);
-    box-shadow:0 2px 10px rgba(129,140,248,.2);
-  }
-  .btn-primary:disabled{
-    opacity:.35;cursor:not-allowed;
-    transform:none;box-shadow:none;
-  }
-  .btn svg{width:16px;height:16px}
+/* ===== 底部 ===== */
+.footer{text-align:center;margin-top:20px;font-size:11px;color:var(--text-3);display:flex;align-items:center;justify-content:center;gap:12px}
+.footer a{color:var(--accent);text-decoration:none;font-weight:500;display:inline-flex;align-items:center;gap:4px}
+.footer a:hover{text-decoration:underline}
+.footer a svg{width:13px;height:13px}
+.footer-sep{color:var(--border)}
 
-  /* 加载动画 */
-  .spinner{
-    width:14px;height:14px;border:2px solid transparent;
-    border-top-color:currentColor;border-radius:50%;
-    animation:spin .6s linear infinite;
-  }
-  @keyframes spin{to{transform:rotate(360deg)}}
-
-  /* ===== 底部 ===== */
-  .footer{
-    text-align:center;margin-top:28px;
-    font-size:11px;color:var(--text-3);
-    letter-spacing:.02em;
-  }
-  .footer a{color:var(--accent);text-decoration:none;opacity:.7}
-  .footer a:hover{opacity:1}
-
-  .hidden{display:none}
-
-  /* 响应式 */
-  @media(max-width:480px){
-    body{padding:16px;align-items:flex-start;padding-top:48px}
-    .container{max-width:100%}
-    .panel-header{padding:16px 20px 12px}
-    .panel-body{padding:16px 20px 20px}
-    .action-area{padding:0 20px 20px}
-    .divider{margin:0 20px}
-  }
-
-  /* 减少动画偏好 */
-  @media(prefers-reduced-motion:reduce){
-    *{animation-duration:0.01ms!important;transition-duration:0.01ms!important}
-  }
+/* ===== 响应式 ===== */
+@media(max-width:480px){
+  body{padding:16px;align-items:flex-start;padding-top:40px}
+  .container{max-width:100%}
+  .card-body{padding:24px 20px}
+  .btn-area{padding:0 20px 20px}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
 </style>
 </head>
 <body>
 <div class="container">
-  <!-- 品牌区 -->
+
   <div class="brand">
-    <div class="brand-logo">
-      <img class="brand-mark" src="/logo.png" alt="ShareClaw Logo">
-      <span class="brand-name">ShareClaw</span>
-    </div>
-    <div class="brand-tagline">Cloud Node Sync</div>
+    <img src="/logo.png" alt="ShareClaw" class="brand-logo">
+    <div class="brand-name">拼虾虾</div>
+    <div class="brand-slogan">拼着养更划算</div>
   </div>
 
-  <!-- 主面板 -->
-  <div class="panel" id="panel">
-    <!-- 面板头部 -->
-    <div class="panel-header">
-      <div class="panel-title">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9 2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9 2.83-2.83"/>
-        </svg>
-        <span>节点同步</span>
-      </div>
-      <div class="badge badge-idle" id="badge">
-        <div class="badge-dot"></div>
-        <span id="badgeText">待命</span>
-      </div>
-    </div>
+  <div class="card" id="card">
+    <div class="card-body">
 
-    <div class="divider"></div>
+      <!-- 欢迎态 -->
+      <div class="welcome" id="welcomeView">
+        <h2>接入你的微信</h2>
+        <p>扫码即可让 AI 助手接入你的微信，和朋友共享一只虾</p>
 
-    <!-- 内容区 -->
-    <div class="panel-body">
-      <!-- 空闲态 -->
-      <div class="idle-view" id="idleView">
-        <div class="idle-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-            <path d="M2 17l10 5 10-5"/>
-            <path d="M2 12l10 5 10-5"/>
-          </svg>
+        <div class="input-group">
+          <label>你的昵称</label>
+          <input type="text" class="input-field" id="inputName" placeholder="输入昵称，方便大家认识你">
         </div>
-        <div class="idle-title">准备同步新节点</div>
-        <div class="idle-desc">将新的微信通道接入云端集群，自动完成队列调度与服务部署</div>
+
+        <div class="input-group" id="inviteGroup">
+          <label>邀请码</label>
+          <input type="text" class="input-field mono" id="inputInvite" placeholder="粘贴虾主分享的邀请码">
+          <div class="input-hint">没有邀请码？找虾主要一个吧</div>
+        </div>
       </div>
 
       <!-- 进度态 -->
       <div class="progress-view" id="progressView">
-        <div class="track">
-          <div class="track-fill" id="trackFill"></div>
-        </div>
-        <div class="stage-info">
-          <div class="stage-text" id="stageText">初始化中...</div>
+        <div class="track"><div class="track-fill" id="trackFill"></div></div>
+        <div class="stage-row">
+          <div class="stage-text" id="stageText">准备中...</div>
           <div class="stage-pct" id="stagePct">0%</div>
         </div>
 
-        <!-- 二维码区域 -->
         <div class="qr-area" id="qrArea">
-          <div class="qr-frame" id="qrFrame">
-            <div class="qr-prompt">使用微信扫描以完成身份绑定</div>
+          <div class="qr-box" id="qrBox">
+            <div class="qr-label">用微信扫一扫下面的二维码</div>
             <div class="qr-code" id="qrCode"></div>
-            <div class="qr-countdown" id="qrCountdown">等待扫码...</div>
+            <div class="qr-link" id="qrLink" style="display:none" onclick="copyQrUrl()">
+              <svg class="qr-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              <a class="qr-link-url" id="qrLinkUrl" href="#" target="_blank" rel="noopener" onclick="event.stopPropagation()"></a>
+              <span class="qr-link-copy">复制</span>
+            </div>
+            <div class="qr-tip">扫码后在微信上点确认就好啦</div>
           </div>
         </div>
 
-        <!-- 结果区域 -->
         <div class="result" id="result">
-          <div class="result-inner" id="resultInner">
+          <div class="result-box" id="resultBox">
             <div class="result-icon" id="resultIcon"></div>
             <div class="result-body">
               <div class="result-title" id="resultTitle"></div>
@@ -413,211 +224,199 @@
           </div>
         </div>
       </div>
+
     </div>
 
-    <!-- 操作按钮 -->
-    <div class="action-area">
+    <div class="btn-area">
       <button class="btn btn-primary" id="actionBtn" onclick="startSync()">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="5 3 19 12 5 21 5 3"/>
-        </svg>
-        开始同步
+        开始接入
       </button>
     </div>
   </div>
 
-  <!-- 底部 -->
   <div class="footer">
-    Powered by ShareClaw · <a href="https://github.com/gardennchen/ShareClaw" target="_blank" rel="noopener">GitHub</a>
+    <a href="/dashboard">我是虾主</a>
+    <span class="footer-sep">·</span>
+    <a href="https://github.com/gardennchen/ShareClaw" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
   </div>
 </div>
 
 <script>
-/* ===== 后端阶段 → 前端映射 ===== */
-const STAGE_TEXT = {
-  init: '正在初始化环境...',
-  backend_ready: '后端服务就绪',
-  selecting_instance: '正在调度最优节点...',
-  instance_check: '正在检查实例状态...',
-  query_status: '正在同步集群状态...',
-  evict: '正在调整队列...',
-  kick_old: '正在释放旧通道...',
-  qrcode: '等待身份验证...',
-  login_complete: '验证通过，正在部署...',
-  enqueue: '节点已加入集群',
-  restart_gateway: '正在重启网关服务...',
-  done: '同步完成'
+/* SVG 图标模板 */
+const ICON_SUCCESS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+const ICON_ERROR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+const ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>';
+
+const STAGE = {
+  init:              {text:'正在准备环境...',      pct:8},
+  backend_ready:     {text:'连接成功',             pct:18},
+  selecting_instance:{text:'正在寻找最佳服务器...', pct:25},
+  query_status:      {text:'正在检查当前状态...',   pct:30},
+  evict:             {text:'正在腾出位置...',       pct:45},
+  qrcode:            {text:'请扫码登录微信',       pct:55},
+  login_complete:    {text:'登录成功，正在部署...', pct:70},
+  enqueue:           {text:'你的微信已加入队列',   pct:80},
+  restart_gateway:   {text:'正在启动服务...',       pct:90},
+  done:              {text:'搞定！',               pct:100},
 };
 
-const STAGE_PROGRESS = {
-  init: 8,
-  backend_ready: 18,
-  selecting_instance: 25,
-  instance_check: 20,
-  query_status: 30,
-  evict: 45,
-  kick_old: 50,
-  qrcode: 55,
-  login_complete: 70,
-  enqueue: 80,
-  restart_gateway: 90,
-  done: 100
-};
+/* 自动读取 URL 邀请码 */
+(function(){
+  const p = new URLSearchParams(location.search);
+  const inv = p.get('invite');
+  if(inv) document.getElementById('inputInvite').value = inv;
+})();
 
-let currentStage = '';
+/* UI 工具 */
+function setTrack(p){document.getElementById('trackFill').style.width=p+'%';document.getElementById('stagePct').textContent=p+'%'}
+function setText(t){document.getElementById('stageText').textContent=t}
+function setCard(s){document.getElementById('card').className='card'+(s?' '+s:'')}
+function showQR(d){
+  /* 解析原始数据：提取纯二维码图案和链接 */
+  const lines = d.split('\n');
+  const qrLines = [];
+  let url = '';
 
-/* ===== UI 工具函数 ===== */
-function setBadge(type, text) {
-  const badge = document.getElementById('badge');
-  badge.className = 'badge badge-' + type;
-  document.getElementById('badgeText').textContent = text;
-}
-
-function setTrack(pct) {
-  const fill = document.getElementById('trackFill');
-  fill.style.width = pct + '%';
-  document.getElementById('stagePct').textContent = pct + '%';
-}
-
-function setStageText(text) {
-  document.getElementById('stageText').textContent = text;
-}
-
-function showQR(data) {
-  const area = document.getElementById('qrArea');
-  const frame = document.getElementById('qrFrame');
-  document.getElementById('qrCode').textContent = data;
-  frame.classList.add('scanning');
-  area.classList.add('visible');
-}
-
-function hideQR() {
-  const area = document.getElementById('qrArea');
-  const frame = document.getElementById('qrFrame');
-  frame.classList.remove('scanning');
-  area.classList.remove('visible');
-}
-
-function showResult(type, title, desc) {
-  const container = document.getElementById('result');
-  const inner = document.getElementById('resultInner');
-  const iconEl = document.getElementById('resultIcon');
-
-  inner.className = 'result-inner ' + type;
-
-  if (type === 'success') {
-    iconEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-  } else {
-    iconEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  for(const line of lines){
+    const trimmed = line.trim();
+    /* 提取 URL */
+    if(/https?:\/\//.test(trimmed)){
+      const m = trimmed.match(/(https?:\/\/\S+)/);
+      if(m) url = m[1];
+    }
+    /* 二维码行：包含 █ 或 ▀ 或 ▄ 等 block 字符 */
+    if(/[█▀▄▌▐░▒▓\u2580-\u259F\u2588]/.test(trimmed) && trimmed.length > 5){
+      qrLines.push(line);
+    }
   }
 
-  document.getElementById('resultTitle').textContent = title;
-  document.getElementById('resultDesc').textContent = desc;
-  container.classList.add('visible');
+  const qrEl = document.getElementById('qrCode');
+  if(qrLines.length > 0){
+    qrEl.textContent = qrLines.join('\n');
+  } else {
+    /* 没有提取到 block 字符，回退显示原始内容（去掉提示文字） */
+    const filtered = lines.filter(l => {
+      const t = l.trim();
+      return t && !t.startsWith('使用微信') && !t.startsWith('如果二维码') && !t.startsWith('等待连接');
+    });
+    qrEl.textContent = filtered.join('\n');
+  }
+
+  /* 展示链接 */
+  const linkEl = document.getElementById('qrLink');
+  const linkUrlEl = document.getElementById('qrLinkUrl');
+  if(url){
+    linkUrlEl.href = url;
+    linkUrlEl.textContent = url;
+    linkEl.style.display = 'flex';
+    window._qrUrl = url;
+  } else {
+    linkEl.style.display = 'none';
+  }
+
+  document.getElementById('qrBox').classList.add('scanning');
+  document.getElementById('qrArea').classList.add('visible');
+}
+function copyQrUrl(){
+  if(window._qrUrl){
+    navigator.clipboard.writeText(window._qrUrl);
+    const el = document.querySelector('.qr-link-copy');
+    el.textContent = '已复制';
+    setTimeout(()=>{ el.textContent = '复制'; }, 1500);
+  }
+}
+function hideQR(){
+  document.getElementById('qrBox').classList.remove('scanning');
+  document.getElementById('qrArea').classList.remove('visible');
+}
+function showResult(type,iconSvg,title,desc){
+  const box=document.getElementById('resultBox');
+  box.className='result-box '+type;
+  document.getElementById('resultIcon').innerHTML=iconSvg;
+  document.getElementById('resultTitle').textContent=title;
+  document.getElementById('resultDesc').textContent=desc;
+  document.getElementById('result').classList.add('visible');
 }
 
-function setPanelState(state) {
-  const panel = document.getElementById('panel');
-  panel.className = 'panel' + (state ? ' ' + state : '');
-}
+function startSync(){
+  const btn=document.getElementById('actionBtn');
+  btn.disabled=true;
+  btn.innerHTML='<div class="spinner"></div> 接入中...';
 
-function resetUI() {
-  currentStage = '';
-  document.getElementById('idleView').style.display = '';
-  document.getElementById('progressView').classList.remove('visible');
-  document.getElementById('progressView').style.display = 'none';
-  document.getElementById('trackFill').className = 'track-fill';
-  setTrack(0);
-  setStageText('');
-  setBadge('idle', '待命');
-  hideQR();
-  document.getElementById('result').classList.remove('visible');
-  setPanelState('');
-}
-
-/* ===== 核心流程 ===== */
-function startSync() {
-  const btn = document.getElementById('actionBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spinner"></div> 同步中...';
-  resetUI();
-
-  // 切换到进度视图
-  document.getElementById('idleView').style.display = 'none';
-  const pv = document.getElementById('progressView');
-  pv.style.display = 'block';
+  document.getElementById('welcomeView').style.display='none';
+  const pv=document.getElementById('progressView');
+  pv.style.display='block';
   pv.classList.add('visible');
+  /* 重置：恢复进度条/百分比（上次失败可能被隐藏） */
+  document.querySelector('.track').style.display='';
+  document.getElementById('stagePct').style.display='';
+  document.getElementById('trackFill').className='track-fill';
+  document.getElementById('trackFill').style.width='0';
+  document.getElementById('result').classList.remove('visible');
+  hideQR();
+  setCard('active');
+  setText('正在连接...');
+  setTrack(0);
 
-  setPanelState('active');
-  setBadge('working', '同步中');
-  setStageText('正在连接...');
+  const name=(document.getElementById('inputName').value||'').trim();
+  const invite=(document.getElementById('inputInvite').value||'').trim();
+  const userId=name||('user_'+Date.now());
+  const q=new URLSearchParams();
+  q.set('user_id',userId);
+  if(name)q.set('user_name',name);
+  if(invite)q.set('invite',invite);
 
-  const es = new EventSource('/rotate');
+  const es=new EventSource('/rotate?'+q);
 
-  es.addEventListener('progress', function(e) {
-    const d = JSON.parse(e.data);
-    currentStage = d.stage;
-
-    const pct = STAGE_PROGRESS[d.stage] || 0;
-    setTrack(pct);
-    setStageText(STAGE_TEXT[d.stage] || d.message);
-
-    if (d.stage === 'login_complete') {
-      hideQR();
-      setBadge('working', '部署中');
-    } else if (d.stage !== 'qrcode') {
-      setBadge('working', '同步中');
-    }
+  es.addEventListener('progress',function(e){
+    const d=JSON.parse(e.data);
+    const s=STAGE[d.stage]||{text:d.message,pct:0};
+    setTrack(s.pct);
+    setText(s.text);
+    if(d.stage==='login_complete')hideQR();
   });
 
-  es.addEventListener('qrcode', function(e) {
-    const d = JSON.parse(e.data);
-    currentStage = 'qrcode';
-    setTrack(STAGE_PROGRESS.qrcode);
-    setBadge('scan', '待扫码');
-    setStageText('等待身份验证...');
+  es.addEventListener('qrcode',function(e){
+    const d=JSON.parse(e.data);
+    setTrack(STAGE.qrcode.pct);
+    setText(STAGE.qrcode.text);
     showQR(d.data);
   });
 
-  es.addEventListener('done', function(e) {
-    const d = JSON.parse(e.data);
-    es.close();
-    hideQR();
-
-    const fill = document.getElementById('trackFill');
-    fill.classList.add('done');
-    setTrack(100);
-
-    setPanelState('done');
-    setBadge('success', '已同步');
-    setStageText('同步完成');
-
-    showResult('success', '节点已上线', '新通道已接入集群并正常运行，可开始接收消息');
-
-    btn.disabled = false;
-    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg> 再次同步';
+  es.addEventListener('done',function(e){
+    es.close();hideQR();
+    document.getElementById('trackFill').classList.add('done');
+    setTrack(100);setText('搞定！');
+    setCard('done');
+    showResult('success',ICON_SUCCESS,'接入成功！','你的微信已连接 AI 助手，可以开始使用了');
+    btn.disabled=false;
+    btn.innerHTML='返回';
+    btn.onclick=function(){ location.reload(); };
   });
 
-  es.addEventListener('error', function(e) {
-    try {
-      const d = JSON.parse(e.data);
-      es.close();
-      hideQR();
-
-      const fill = document.getElementById('trackFill');
-      fill.classList.add('error');
-
-      setPanelState('error');
-      setBadge('error', '异常');
-      setStageText('同步中断');
-
-      showResult('error', '同步失败', d.message || '请稍后重试');
-    } catch(_) {
-      es.close();
-    }
-    btn.disabled = false;
-    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg> 重新同步';
+  es.addEventListener('error',function(e){
+    try{
+      const d=JSON.parse(e.data);
+      es.close();hideQR();
+      /* 失败时隐藏进度条和百分比 */
+      document.querySelector('.track').style.display='none';
+      document.getElementById('stagePct').style.display='none';
+      setCard('error');setText('出了点问题');
+      const msg = d.message||'请稍后再试一下';
+      showResult('error',ICON_ERROR,'接入失败',msg);
+      /* 邀请码相关错误：按钮改为"换个邀请码"，回到欢迎页 */
+      const isInviteErr = /邀请码/.test(msg);
+      btn.disabled=false;
+      if(isInviteErr){
+        btn.innerHTML='换个邀请码';
+        btn.onclick=function(){ location.reload(); };
+      } else {
+        btn.innerHTML=ICON_REFRESH+' 重新试试';
+      }
+    }catch(_){es.close();btn.disabled=false;btn.innerHTML=ICON_REFRESH+' 重新试试';}
   });
 }
 </script>

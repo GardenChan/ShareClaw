@@ -57,3 +57,57 @@ CMD_RESTART_GATEWAY = "systemctl --user restart openclaw-gateway"
 
 # 检查 gateway 状态
 CMD_CHECK_GATEWAY = "systemctl --user is-active openclaw-gateway"
+
+
+# ── 模型配置 ──────────────────────────────────────────────
+
+# 读取当前已配置的 providers 和 primary model
+CMD_READ_MODEL_CONFIG = (
+    "jq '{providers: .models.providers, primary: .agents.defaults.model.primary}' "
+    "~/.openclaw/openclaw.json 2>/dev/null || echo '{}'"
+)
+
+
+def cmd_add_provider(provider_name: str, base_url: str, api_key: str, api_type: str, model_id: str, model_name: str) -> str:
+    """构建 jq 命令：添加模型供应商到 openclaw.json（使用 base64 安全传参）"""
+    import json as _json
+    provider_config = _json.dumps({
+        "baseUrl": base_url,
+        "apiKey": api_key,
+        "api": api_type,
+        "models": [{"id": model_id, "name": model_name}],
+    }, ensure_ascii=False)
+    encoded = base64.b64encode(provider_config.encode("utf-8")).decode("utf-8")
+    return (
+        f"PROV=$(echo '{encoded}' | base64 -d) && "
+        f"jq --arg pname '{provider_name}' --argjson pconf \"$PROV\" "
+        f"'.models.providers[$pname] = $pconf' "
+        f"~/.openclaw/openclaw.json > /tmp/_oc_tmp.json && "
+        f"mv /tmp/_oc_tmp.json ~/.openclaw/openclaw.json"
+    )
+
+
+def cmd_set_merge_mode() -> str:
+    """构建 jq 命令：设置 models.mode = merge"""
+    return (
+        "jq '.models.mode = \"merge\"' ~/.openclaw/openclaw.json "
+        "> /tmp/_oc_tmp.json && mv /tmp/_oc_tmp.json ~/.openclaw/openclaw.json"
+    )
+
+
+def cmd_set_primary_model(provider_name: str, model_id: str) -> str:
+    """构建 jq 命令：设置主模型"""
+    return (
+        f"jq '.agents.defaults.model.primary = \"{provider_name}/{model_id}\"' "
+        f"~/.openclaw/openclaw.json > /tmp/_oc_tmp.json && "
+        f"mv /tmp/_oc_tmp.json ~/.openclaw/openclaw.json"
+    )
+
+
+def cmd_delete_provider(provider_name: str) -> str:
+    """构建 jq 命令：删除指定的 provider"""
+    return (
+        f"jq 'del(.models.providers[\"{provider_name}\"])' "
+        f"~/.openclaw/openclaw.json > /tmp/_oc_tmp.json && "
+        f"mv /tmp/_oc_tmp.json ~/.openclaw/openclaw.json"
+    )
