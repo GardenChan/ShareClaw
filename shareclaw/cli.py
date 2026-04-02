@@ -49,6 +49,13 @@ def main():
 
 def _cmd_serve(args):
     """启动 Web 服务"""
+    import logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
     mode = os.environ.get("SHARECLAW_MODE", "local").strip().lower()
 
     if mode == "remote":

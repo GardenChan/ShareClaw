@@ -1,12 +1,65 @@
 """本地模式后端 —— 直接操作文件系统 + subprocess"""
 
 import json
+import logging
 import os
 import subprocess
 import time
 
 from shareclaw.claw.backend.base import ClawBackend
 from shareclaw.server.sse import sse_event
+
+logger = logging.getLogger(__name__)
+
+
+def _build_subprocess_env() -> dict:
+    """
+    构建 subprocess 使用的**最小**环境变量。
+
+    关键发现 1：systemd 服务环境中继承的变量（如 NODE_PATH、NODE_OPTIONS 等）
+    会干扰 openclaw 的插件发现机制，导致 "Unsupported channel" 错误。
+    而使用 env -i（完全干净环境）+ bash -lc 手动执行则成功。
+
+    关键发现 2：**不要**显式设置 OPENCLAW_HOME 环境变量。openclaw 在没有
+    OPENCLAW_HOME 时能自动从 HOME 推导出正确的配置目录（~/.openclaw），
+    但显式传入 OPENCLAW_HOME 会触发不同的配置路径解析逻辑，导致配置
+    读取失败、插件发现失败，最终报 "Unsupported channel" 错误。
+    让 bash login shell 从 .bashrc/.profile 构建环境后，openclaw 自行
+    处理配置发现即可。
+
+    因此这里只传递最少必要变量（HOME、LANG 等），让 bash login shell
+    从 .bashrc/.profile 重新构建完整的运行时环境，避免 systemd 残留
+    变量的干扰。
+    """
+    home = os.environ.get("HOME", "/root")
+    env = {
+        "HOME": home,
+        "USER": os.environ.get("USER", "root"),
+        "LANG": os.environ.get("LANG", "en_US.UTF-8"),
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "TERM": os.environ.get("TERM", "xterm-256color"),
+    }
+
+    # 注意：不传递 OPENCLAW_HOME，让 openclaw 自行从 HOME 推导配置目录
+    logger.info("subprocess 最小环境已构建, HOME=%s (OPENCLAW_HOME 不显式传递)", home)
+
+    return env
+
+
+def _wrap_cmd_for_login_shell(cmd: str) -> list:
+    """
+    将命令包装为 bash login shell 执行。
+
+    openclaw 通过 nvm + pnpm 全局安装，其 channel 插件（如 openclaw-weixin）
+    的加载依赖 .bashrc/.profile 中 nvm/pnpm 的初始化脚本设置的完整 Node.js
+    运行时环境。systemd 服务环境不会 source 这些脚本，导致插件无法被发现，
+    报 "Unsupported channel" 错误。
+
+    通过 bash -lc 执行命令，bash 会以 login shell 模式运行，自动 source
+    /etc/profile、~/.profile、~/.bashrc 等初始化脚本，确保 nvm/pnpm
+    正确初始化，openclaw 才能发现并加载扩展插件。
+    """
+    return ["bash", "-lc", cmd]
 
 
 class LocalBackend(ClawBackend):
@@ -21,6 +74,12 @@ class LocalBackend(ClawBackend):
         super().__init__(config)
         self.openclaw_home = config["openclaw_home"]
         self.shareclaw_home = config["shareclaw_home"]
+        self._subprocess_env = _build_subprocess_env()
+
+        # 注意：不将 OPENCLAW_HOME 注入 subprocess 环境。
+        # openclaw 在没有 OPENCLAW_HOME 时能自动从 HOME 推导配置目录，
+        # 显式传入反而会触发不同的路径解析逻辑导致插件发现失败。
+        logger.info("LocalBackend openclaw_home=%s (不注入 subprocess 环境)", self.openclaw_home)
 
         # 确保 shareclaw 数据目录存在
         os.makedirs(self.shareclaw_home, exist_ok=True)
@@ -107,14 +166,22 @@ class LocalBackend(ClawBackend):
             str: SSE 事件
         """
         cmd = "openclaw channels login --channel openclaw-weixin"
+        wrapped_cmd = _wrap_cmd_for_login_shell(cmd)
+
+        # 记录调试信息，帮助排查 systemd 环境问题
+        logger.info("执行登录命令: %s", wrapped_cmd)
+        logger.info("subprocess OPENCLAW_HOME: %s", self._subprocess_env.get("OPENCLAW_HOME", ""))
+        logger.info("subprocess HOME: %s", self._subprocess_env.get("HOME", ""))
+        logger.info("subprocess cwd: %s", self.openclaw_home)
 
         process = subprocess.Popen(
-            cmd,
-            shell=True,
+            wrapped_cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,  # 行缓冲
+            env=self._subprocess_env,
+            cwd=self.openclaw_home,
         )
 
         qrcode_found = False
@@ -195,6 +262,7 @@ class LocalBackend(ClawBackend):
             capture_output=True,
             text=True,
             timeout=30,
+            env=self._subprocess_env,
         )
         if result.returncode != 0:
             raise RuntimeError(f"重启 gateway 失败: {result.stderr}")
@@ -205,6 +273,7 @@ class LocalBackend(ClawBackend):
             capture_output=True,
             text=True,
             timeout=15,
+            env=self._subprocess_env,
         )
         return result.stdout.strip()
 

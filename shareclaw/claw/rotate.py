@@ -245,6 +245,7 @@ def rotate_stream():
         yield sse_event("error", {"stage": "error", "message": f"腾讯云 API 错误: {str(e)}"})
 
     except Exception as e:
+        logger.error("坐席轮转异常: %s", e, exc_info=True)
         yield sse_event("error", {"stage": "error", "message": f"执行失败: {str(e)}"})
 
     finally:
