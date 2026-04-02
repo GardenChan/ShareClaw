@@ -27,11 +27,17 @@ def _build_subprocess_env() -> dict:
     让 bash login shell 从 .bashrc/.profile 构建环境后，openclaw 自行
     处理配置发现即可。
 
-    因此这里只传递最少必要变量（HOME、LANG 等），让 bash login shell
-    从 .bashrc/.profile 重新构建完整的运行时环境，避免 systemd 残留
-    变量的干扰。
+    关键发现 3：**必须传递 DBUS_SESSION_BUS_ADDRESS 和 XDG_RUNTIME_DIR**。
+    systemctl --user 命令依赖这两个变量连接用户级 D-Bus session，
+    缺少它们会导致 "Failed to connect to bus: No medium found" 错误，
+    使得 restart_gateway / check_gateway 等操作失败。
+
+    因此这里只传递最少必要变量（HOME、LANG 等）+ D-Bus 相关变量，
+    让 bash login shell 从 .bashrc/.profile 重新构建完整的运行时环境，
+    避免 systemd 残留变量的干扰。
     """
     home = os.environ.get("HOME", "/root")
+    uid = os.getuid()
     env = {
         "HOME": home,
         "USER": os.environ.get("USER", "root"),
@@ -40,8 +46,26 @@ def _build_subprocess_env() -> dict:
         "TERM": os.environ.get("TERM", "xterm-256color"),
     }
 
+    # systemctl --user 依赖 D-Bus session 和 XDG_RUNTIME_DIR
+    # 优先从当前环境继承，否则按 Linux 惯例构造默认值
+    dbus_addr = os.environ.get("DBUS_SESSION_BUS_ADDRESS")
+    if dbus_addr:
+        env["DBUS_SESSION_BUS_ADDRESS"] = dbus_addr
+    else:
+        # systemd 默认的用户 bus 地址
+        env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path=/run/user/{uid}/bus"
+
+    xdg_runtime = os.environ.get("XDG_RUNTIME_DIR")
+    if xdg_runtime:
+        env["XDG_RUNTIME_DIR"] = xdg_runtime
+    else:
+        env["XDG_RUNTIME_DIR"] = f"/run/user/{uid}"
+
     # 注意：不传递 OPENCLAW_HOME，让 openclaw 自行从 HOME 推导配置目录
-    logger.info("subprocess 最小环境已构建, HOME=%s (OPENCLAW_HOME 不显式传递)", home)
+    logger.info(
+        "subprocess 最小环境已构建, HOME=%s, XDG_RUNTIME_DIR=%s, DBUS=%s (OPENCLAW_HOME 不显式传递)",
+        home, env.get("XDG_RUNTIME_DIR"), env.get("DBUS_SESSION_BUS_ADDRESS"),
+    )
 
     return env
 
