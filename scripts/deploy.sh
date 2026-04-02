@@ -252,45 +252,11 @@ check_local_prereqs() {
         warn "$OPENCLAW_HOME/openclaw.json 不存在，请确认 OpenClaw 已配置"
     fi
 
-    # 检查 openclaw-weixin 插件安装状态
-    # 注意：不要手动 openclaw config set channels.openclaw-weixin 或 plugins.entries，
-    # 这会导致 openclaw.json 配置校验失败，阻断所有命令。
-    # 插件安装时会自动注册 channel 和 plugin entries。
-    if command -v openclaw &>/dev/null; then
-        if openclaw plugins list 2>/dev/null | grep -q "openclaw-weixin"; then
-            ok "openclaw-weixin 插件已安装"
-        else
-            warn "openclaw-weixin 插件未安装，请先执行:"
-            warn "  openclaw plugins install openclaw-weixin"
-        fi
-    fi
-
     # 检查 gateway
-    # 注意：部署脚本在交互式 shell 下运行，PATH 中已有 openclaw，
-    # 无需 bash -lc 包装（那是 systemd 环境下的 workaround）。
     if systemctl --user is-active openclaw-gateway &>/dev/null; then
         ok "openclaw-gateway 状态: active"
-        # 重启 gateway 以加载最新插件 + channel 配置
-        info "重启 openclaw-gateway 以应用配置..."
-        openclaw gateway restart 2>/dev/null || systemctl --user restart openclaw-gateway 2>/dev/null || true
-        sleep 5
-        if systemctl --user is-active openclaw-gateway &>/dev/null; then
-            ok "openclaw-gateway 已重启"
-        else
-            warn "openclaw-gateway 重启后状态异常，请检查"
-        fi
     else
         warn "openclaw-gateway 未运行或不是用户级服务"
-    fi
-
-    # 验证 openclaw-weixin 插件加载状态（需要 gateway 运行中）
-    if command -v openclaw &>/dev/null; then
-        if openclaw plugins list 2>/dev/null | grep -q "openclaw-weixin.*loaded"; then
-            ok "openclaw-weixin 插件已加载"
-        else
-            warn "openclaw-weixin 插件未能加载，请检查: openclaw plugins list | grep weixin"
-            warn "如未安装，请执行: openclaw plugins install openclaw-weixin"
-        fi
     fi
 }
 
