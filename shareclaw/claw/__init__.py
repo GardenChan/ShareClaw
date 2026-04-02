@@ -5,6 +5,8 @@ from shareclaw.claw.commands import (
     CMD_LOGIN,
     CMD_RESTART_GATEWAY,
     CMD_CHECK_GATEWAY,
+    CMD_CHECK_WEIXIN_PLUGIN,
+    CMD_ENABLE_WEIXIN_PLUGIN,
     CMD_ENSURE_SHARECLAW_DIR,
 )
 from shareclaw.claw.queue import (
@@ -20,6 +22,8 @@ __all__ = [
     "CMD_LOGIN",
     "CMD_RESTART_GATEWAY",
     "CMD_CHECK_GATEWAY",
+    "CMD_CHECK_WEIXIN_PLUGIN",
+    "CMD_ENABLE_WEIXIN_PLUGIN",
     "CMD_ENSURE_SHARECLAW_DIR",
     "evict_oldest_if_needed",
     "enqueue_account",

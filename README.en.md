@@ -68,6 +68,17 @@ Running OpenClaw requires a 24/7 cloud server. For individual users, dedicating 
 
 Since multiple people share the server, it makes sense to **pick a high-spec machine** (more RAM, better CPU). The computing power that one person can't fully use is shared among many — **the per-person cost is actually lower**.
 
+### 🔐 Shared Claw, Isolated Contexts
+
+Sharing one server doesn't mean sharing data. ShareClaw supports **two isolation levels** to keep everyone's AI experience private:
+
+| Isolation Level | Scope | Use Case | Complexity |
+|---|---|---|---|
+| 🛡️ **Weak Isolation (Session-level)** | Independent **conversation contexts** across WeChat accounts; shared memory & persona | Friends sharing, non-overlapping contacts | One-line config |
+| 🔒 **Strong Isolation (Agent-level)** | Fully independent **conversations, memory, persona, and workspace** per WeChat account | Need completely separate AI personalities | Create separate Agents |
+
+> 📖 For the full isolation mechanism analysis and configuration guide, see **[OpenClaw Multi-Account Isolation Guide](./docs/openclaw-isolation-guide.md)**
+
 ### Use Cases
 
 | Scenario | Description |
@@ -115,7 +126,7 @@ The remote mode is currently built on Tencent Cloud (Lighthouse / CVM + TAT). Th
 
 ShareClaw supports two deployment modes for different scales.
 
-### Architecture 1: Local Mode (Single Server)
+### Architecture 1: Co-located Deployment
 
 ShareClaw and OpenClaw on the **same server**. ShareClaw directly operates local files.
 
@@ -135,9 +146,9 @@ ShareClaw and OpenClaw on the **same server**. ShareClaw directly operates local
                     └─────────────────────────────────────┘
 ```
 
-**Use case**: Personal use with a single server.
+**Use case**: Personal use or small group sharing on a single high-spec server — one claw, shared by friends and family!
 
-### Architecture 2: Remote Mode (Single OpenClaw Instance)
+### Architecture 2: Remote Deployment — Single Node
 
 ShareClaw deployed separately, managing OpenClaw on another server via **Tencent Cloud TAT**.
 
@@ -151,33 +162,33 @@ ShareClaw deployed separately, managing OpenClaw on another server via **Tencent
   └──────────────────┘                                    └──────────────────────┘
 ```
 
-**Use case**: ShareClaw on a public-facing server, OpenClaw on a separate machine.
+**Use case**: ShareClaw on a public-facing server, remotely managing a standalone OpenClaw node.
 
-### Architecture 3: Remote Mode (Multiple OpenClaw Instances)
+### Architecture 3: Remote Deployment — Multi-Node Cluster
 
-ShareClaw manages multiple OpenClaw servers, automatically selecting the least loaded one.
+ShareClaw orchestrates multiple OpenClaw servers, automatically selecting the least loaded node.
 
 ```
   ┌──────────────────┐
   │                  │          ┌──────────────────────┐
-  │  ShareClaw       │ ───────▶│  OpenClaw Instance A   │ queue: 3/6
+  │  ShareClaw       │ ───────▶│  OpenClaw Node A       │ queue: 3/6
   │  (Web + API)     │ │       │  openclaw-weixin      │
   │                  │ │       └──────────────────────┘
   │  ┌────────────┐  │ │
   │  │ Scheduler   │  │ │       ┌──────────────────────┐
-  │  │ least loaded│──┘ ├─────▶│  OpenClaw Instance B   │ queue: 1/6 ← selected
+  │  │ least loaded│──┘ ├─────▶│  OpenClaw Node B       │ queue: 1/6 ← selected
   │  └────────────┘    │       │  openclaw-weixin      │
   │                    │       └──────────────────────┘
   │                    │
   │                    │       ┌──────────────────────┐
-  │                    └─────▶│  OpenClaw Instance C   │ queue: 5/6
+  │                    └─────▶│  OpenClaw Node C       │ queue: 5/6
   └──────────────────┘         │  openclaw-weixin      │
                                └──────────────────────┘
 ```
 
-**Scheduling strategy**: Query all instances' queue lengths → pick shortest → random tie-break → permanently blacklist unhealthy ones.
+**Scheduling strategy**: Query all nodes' queue lengths → pick shortest → random tie-break → permanently blacklist unhealthy ones.
 
-**Use case**: Team or community sharing across multiple OpenClaw servers.
+**Use case**: Team or community sharing across multiple OpenClaw servers with unified scheduling.
 
 ---
 
@@ -275,9 +286,12 @@ Open `http://<your-server>:9000` in your browser and click "Start Sync".
 
 ## Multi-Account Isolation
 
-When multiple WeChat accounts are mounted on the same OpenClaw instance, session and memory isolation depends on OpenClaw's `session.dmScope` configuration.
+When multiple WeChat accounts are mounted on the same OpenClaw instance, ShareClaw supports two isolation levels:
 
-See the **[OpenClaw Multi-Account Isolation Guide](./docs/openclaw-isolation-guide.md)** for a detailed analysis.
+- **Weak Isolation (Session-level)**: Configure `session.dmScope` to isolate conversation contexts between WeChat accounts — just one line of config
+- **Strong Isolation (Agent-level)**: Create independent Agents with bindings routing for each WeChat account — fully isolated conversations, memory, persona, and workspace
+
+See the **[OpenClaw Multi-Account Isolation Guide](./docs/openclaw-isolation-guide.md)** for a detailed analysis and configuration guide.
 
 ---
 

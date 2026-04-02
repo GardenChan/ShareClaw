@@ -387,6 +387,27 @@ ENVEOF
 setup_systemd() {
     info "配置 systemd 用户级服务..."
 
+    # ── 前置：启用 linger 并确保用户级 systemd 实例已运行 ──
+    # root 通过 SSH 登录时，用户级 systemd 实例默认不启动，
+    # 必须先 enable-linger 让 systemd 为该用户生成实例，
+    # 然后设置 XDG_RUNTIME_DIR 让 systemctl --user 能找到 D-Bus socket。
+    if [[ "$DEPLOY_USER" == "root" ]]; then
+        loginctl enable-linger root 2>/dev/null || true
+        # 等待 systemd 为 root 创建用户实例
+        sleep 1
+        # 确保 XDG_RUNTIME_DIR 已设置（SSH 登录的 root 通常缺少此变量）
+        if [[ -z "${XDG_RUNTIME_DIR:-}" ]]; then
+            export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+        fi
+        # 若 runtime dir 不存在，手动创建
+        if [[ ! -d "$XDG_RUNTIME_DIR" ]]; then
+            mkdir -p "$XDG_RUNTIME_DIR"
+            chmod 700 "$XDG_RUNTIME_DIR"
+        fi
+    else
+        sudo loginctl enable-linger "$DEPLOY_USER" 2>/dev/null || true
+    fi
+
     mkdir -p "$SYSTEMD_DIR"
 
     # 构建 PATH
@@ -418,13 +439,6 @@ SVCEOF
     systemctl --user daemon-reload
     systemctl --user enable shareclaw
     systemctl --user restart shareclaw
-
-    # 启用 linger（开机自启）
-    if [[ "$DEPLOY_USER" == "root" ]]; then
-        loginctl enable-linger root 2>/dev/null || true
-    else
-        sudo loginctl enable-linger "$DEPLOY_USER" 2>/dev/null || true
-    fi
 
     # 等待启动
     sleep 2

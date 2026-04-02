@@ -164,11 +164,15 @@ def rotate_stream():
                 "message": f"队列未满 ({queue_info['queue_length']}/{queue_info['max_queue_size']})，无需踢出",
             })
 
-        # 6. 登录新微信
+        # 6. 前置检查：确保 gateway 正常 + openclaw-weixin 插件已启用
+        for event in backend.ensure_prerequisites():
+            yield event
+
+        # 7. 登录新微信
         for event in backend.login():
             yield event
 
-        # 7. 检测新增的 account 并入队
+        # 8. 检测新增的 account 并入队
         new_accounts = backend.read_accounts()
         new_account = detect_new_account(old_accounts, new_accounts)
 
@@ -202,19 +206,19 @@ def rotate_stream():
                 "message": "⚠️ 登录后未检测到新增 account，请检查登录是否成功",
             })
 
-        # 8. 重启 gateway
+        # 9. 重启 gateway
         backend.restart_gateway()
         yield sse_event("progress", {
             "stage": "restart_gateway",
             "message": "openclaw-gateway 已重启",
         })
 
-        # 9. 检查服务状态
+        # 10. 检查服务状态
         status = backend.check_gateway()
         if status != "active":
             raise RuntimeError(f"gateway 重启后状态异常: {status}")
 
-        # 10. 最终状态
+        # 11. 最终状态
         final_queue = get_queue_info(backend)
         yield sse_event("done", {
             "stage": "done",

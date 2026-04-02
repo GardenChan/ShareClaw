@@ -180,6 +180,94 @@ class LocalBackend(ClawBackend):
             "accounts": json.dumps(accounts, ensure_ascii=False),
         }
 
+    # ── 前置检查（登录前必须确保） ────────────────────────
+
+    def ensure_prerequisites(self):
+        """
+        登录前的前置检查（本地模式）。
+
+        1. 检查 openclaw-gateway 是否 active
+        2. 检查 openclaw-weixin 插件是否启用，未启用则自动启用并重启 gateway
+
+        Yields:
+            str: SSE 事件
+        """
+        yield sse_event("progress", {
+            "stage": "prerequisites",
+            "message": "正在检查前置条件...",
+        })
+
+        # 1. 检查 gateway 状态
+        gateway_status = self.check_gateway()
+        if gateway_status != "active":
+            raise RuntimeError(
+                f"openclaw-gateway 状态异常: {gateway_status}，"
+                "请先确保 gateway 正常运行: systemctl --user start openclaw-gateway"
+            )
+
+        yield sse_event("progress", {
+            "stage": "prerequisites",
+            "message": "openclaw-gateway 状态正常",
+        })
+
+        # 2. 检查 openclaw-weixin 插件是否启用
+        plugin_enabled = False
+        config_path = self._openclaw_config_path
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    oc_config = json.load(f)
+                plugin_enabled = (
+                    oc_config.get("plugins", {})
+                    .get("entries", {})
+                    .get("openclaw-weixin", {})
+                    .get("enabled", False)
+                )
+            except (json.JSONDecodeError, IOError):
+                pass
+
+        if plugin_enabled:
+            yield sse_event("progress", {
+                "stage": "prerequisites",
+                "message": "openclaw-weixin 插件已启用",
+            })
+        else:
+            # 自动启用插件
+            logger.info("openclaw-weixin 插件未启用，正在自动启用...")
+            yield sse_event("progress", {
+                "stage": "prerequisites",
+                "message": "openclaw-weixin 插件未启用，正在自动启用...",
+            })
+
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    oc_config = json.load(f)
+
+                # 确保路径存在
+                oc_config.setdefault("plugins", {}).setdefault("entries", {}).setdefault("openclaw-weixin", {})
+                oc_config["plugins"]["entries"]["openclaw-weixin"]["enabled"] = True
+
+                with open(config_path, "w", encoding="utf-8") as f:
+                    json.dump(oc_config, f, ensure_ascii=False, indent=2)
+
+                # 重启 gateway 使插件生效
+                self.restart_gateway()
+                time.sleep(3)
+
+                # 再次检查 gateway 状态
+                gateway_status = self.check_gateway()
+                if gateway_status != "active":
+                    raise RuntimeError(
+                        f"启用插件后 gateway 状态异常: {gateway_status}"
+                    )
+
+                yield sse_event("progress", {
+                    "stage": "prerequisites",
+                    "message": "openclaw-weixin 插件已启用，gateway 已重启",
+                })
+            except (json.JSONDecodeError, IOError) as e:
+                raise RuntimeError(f"自动启用 openclaw-weixin 插件失败: {e}")
+
     # ── 登录 ──────────────────────────────────────────────
 
     def login(self):

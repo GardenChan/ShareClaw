@@ -19,6 +19,8 @@ from shareclaw.claw.commands import (
     CMD_LOGIN,
     CMD_RESTART_GATEWAY,
     CMD_CHECK_GATEWAY,
+    CMD_CHECK_WEIXIN_PLUGIN,
+    CMD_ENABLE_WEIXIN_PLUGIN,
     CMD_ENSURE_SHARECLAW_DIR,
 )
 from shareclaw.server.sse import sse_event
@@ -111,6 +113,86 @@ class RemoteBackend(ClawBackend):
             "config": parts[0].strip() if len(parts) > 0 else "",
             "accounts": parts[1].strip() if len(parts) > 1 else "[]",
         }
+
+    # ── 前置检查（登录前必须确保） ────────────────────────
+
+    def ensure_prerequisites(self):
+        """
+        登录前的前置检查（远程模式）。
+
+        通过 TAT 远程执行：
+        1. 检查 openclaw-gateway 是否 active
+        2. 检查 openclaw-weixin 插件是否启用，未启用则自动启用并重启 gateway
+
+        Yields:
+            str: SSE 事件
+        """
+        yield sse_event("progress", {
+            "stage": "prerequisites",
+            "message": "正在检查远程实例的前置条件...",
+        })
+
+        # 1. 检查 gateway 状态
+        gateway_status = self.check_gateway()
+        if gateway_status != "active":
+            raise RuntimeError(
+                f"远程实例 {self.instance_id} 的 openclaw-gateway 状态异常: {gateway_status}，"
+                "请先确保远程实例上 gateway 正常运行"
+            )
+
+        yield sse_event("progress", {
+            "stage": "prerequisites",
+            "message": f"远程实例 {self.instance_id} 的 openclaw-gateway 状态正常",
+        })
+
+        # 2. 检查 openclaw-weixin 插件是否启用
+        try:
+            result = run_command_and_wait(
+                self.tat, self.instance_id, CMD_CHECK_WEIXIN_PLUGIN, timeout=15
+            )
+            plugin_enabled = result.get("output", "").strip() == "true"
+        except Exception:
+            plugin_enabled = False
+
+        if plugin_enabled:
+            yield sse_event("progress", {
+                "stage": "prerequisites",
+                "message": "openclaw-weixin 插件已启用",
+            })
+        else:
+            # 自动启用插件
+            logger.info("远程实例 %s: openclaw-weixin 插件未启用，正在自动启用...", self.instance_id)
+            yield sse_event("progress", {
+                "stage": "prerequisites",
+                "message": "openclaw-weixin 插件未启用，正在自动启用...",
+            })
+
+            try:
+                result = run_command_and_wait(
+                    self.tat, self.instance_id, CMD_ENABLE_WEIXIN_PLUGIN, timeout=15
+                )
+                if result["task_status"] != "SUCCESS":
+                    raise RuntimeError(f"启用插件失败: {result['output']}")
+
+                # 重启 gateway 使插件生效
+                self.restart_gateway()
+                time.sleep(3)
+
+                # 再次检查 gateway 状态
+                gateway_status = self.check_gateway()
+                if gateway_status != "active":
+                    raise RuntimeError(
+                        f"启用插件后 gateway 状态异常: {gateway_status}"
+                    )
+
+                yield sse_event("progress", {
+                    "stage": "prerequisites",
+                    "message": "openclaw-weixin 插件已启用，gateway 已重启",
+                })
+            except RuntimeError:
+                raise
+            except Exception as e:
+                raise RuntimeError(f"自动启用 openclaw-weixin 插件失败: {e}")
 
     # ── 登录 ──────────────────────────────────────────────
 

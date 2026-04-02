@@ -76,6 +76,26 @@ class ClawBackend(ABC):
         """
         ...
 
+    # ── 前置检查（登录前必须确保） ────────────────────────
+
+    @abstractmethod
+    def ensure_prerequisites(self) -> Generator:
+        """
+        登录前的前置检查，确保环境就绪。
+
+        不管本地还是远程模式，在执行 openclaw channels login 之前
+        必须保证：
+        1. openclaw-gateway 状态正常（systemctl --user is-active）
+        2. openclaw-weixin 插件已启用（enabled = true）
+
+        如果插件未启用会自动启用并重启 gateway。
+        如果 gateway 不正常会抛出 RuntimeError。
+
+        Yields:
+            str: SSE 格式的事件字符串（进度信息）
+        """
+        ...
+
     # ── 登录 ──────────────────────────────────────────────
 
     @abstractmethod

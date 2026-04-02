@@ -59,6 +59,22 @@ CMD_RESTART_GATEWAY = "systemctl --user restart openclaw-gateway"
 CMD_CHECK_GATEWAY = "systemctl --user is-active openclaw-gateway"
 
 
+# ── 前置检查（登录前必须确保） ────────────────────────────
+
+# 检查 openclaw-weixin 插件是否启用
+CMD_CHECK_WEIXIN_PLUGIN = (
+    "jq -r '.plugins.entries[\"openclaw-weixin\"].enabled // false' "
+    "~/.openclaw/openclaw.json 2>/dev/null || echo 'false'"
+)
+
+# 启用 openclaw-weixin 插件（直接修改 JSON，无需 openclaw CLI）
+CMD_ENABLE_WEIXIN_PLUGIN = (
+    "jq '.plugins.entries[\"openclaw-weixin\"].enabled = true' "
+    "~/.openclaw/openclaw.json > /tmp/openclaw.json && "
+    "mv /tmp/openclaw.json ~/.openclaw/openclaw.json"
+)
+
+
 # ── 模型配置 ──────────────────────────────────────────────
 
 # 读取当前已配置的 providers 和 primary model
