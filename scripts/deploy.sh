@@ -225,6 +225,58 @@ install_deps() {
     ok "系统依赖安装完成"
 }
 
+# ── 确保 openclaw-weixin 插件已启用 ───────────────────────
+ensure_weixin_plugin() {
+    local config_file="$OPENCLAW_HOME/openclaw.json"
+    if [[ ! -f "$config_file" ]]; then
+        warn "openclaw.json 不存在，跳过插件检查"
+        return
+    fi
+
+    # 检查 openclaw-weixin 插件是否已启用
+    # 用 python3 解析 JSON（避免依赖 jq）
+    local plugin_enabled
+    plugin_enabled=$(python3 -c "
+import json, sys
+try:
+    c = json.load(open('$config_file'))
+    e = c.get('plugins',{}).get('entries',{}).get('openclaw-weixin',{}).get('enabled', False)
+    print('true' if e else 'false')
+except Exception:
+    print('unknown')
+" 2>/dev/null || echo "unknown")
+
+    if [[ "$plugin_enabled" == "true" ]]; then
+        ok "openclaw-weixin 插件已启用"
+        return
+    fi
+
+    if [[ "$plugin_enabled" == "unknown" ]]; then
+        warn "无法检测 openclaw-weixin 插件状态，跳过"
+        return
+    fi
+
+    # 插件未启用，执行启用
+    info "openclaw-weixin 插件未启用，正在启用..."
+    if bash -lc "openclaw plugins enable openclaw-weixin" &>/dev/null; then
+        ok "openclaw-weixin 插件已启用"
+
+        # 重启 gateway 使插件生效
+        if systemctl --user is-active openclaw-gateway &>/dev/null; then
+            info "重启 openclaw-gateway 以加载插件..."
+            systemctl --user restart openclaw-gateway
+            sleep 3
+            if systemctl --user is-active openclaw-gateway &>/dev/null; then
+                ok "openclaw-gateway 已重启，插件已生效"
+            else
+                warn "openclaw-gateway 重启后状态异常，请手动检查"
+            fi
+        fi
+    else
+        warn "openclaw-weixin 插件启用失败，请手动执行: openclaw plugins enable openclaw-weixin"
+    fi
+}
+
 # ── 本地模式前置检查 ──────────────────────────────────────
 check_local_prereqs() {
     info "检查本地模式前置条件..."
@@ -258,6 +310,9 @@ check_local_prereqs() {
     else
         warn "openclaw-gateway 未运行或不是用户级服务"
     fi
+
+    # 确保 openclaw-weixin 插件已启用（未启用时微信消息无法到达 gateway）
+    ensure_weixin_plugin
 }
 
 # ── 安装 ShareClaw ────────────────────────────────────────
@@ -486,9 +541,16 @@ final_check() {
         warn "Nginx 代理检查未通过（可能需要手动调整配置）"
     fi
 
-    # 获取公网 IP
-    local PUBLIC_IP
-    PUBLIC_IP=$(curl -sf --max-time 5 https://ifconfig.me 2>/dev/null || curl -sf --max-time 5 https://api.ipify.org 2>/dev/null || echo "")
+    # 获取公网 IP（依次尝试多个源，包括云厂商元数据接口）
+    local PUBLIC_IP=""
+    # 腾讯云实例元数据（内网访问，速度快且不受外网限制）
+    PUBLIC_IP=$(curl -sf --max-time 3 http://metadata.tencentyun.com/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+    # 阿里云实例元数据
+    [[ -z "$PUBLIC_IP" ]] && PUBLIC_IP=$(curl -sf --max-time 3 http://100.100.100.200/latest/meta-data/eip/eip-address 2>/dev/null || echo "")
+    # 公网检测服务
+    [[ -z "$PUBLIC_IP" ]] && PUBLIC_IP=$(curl -sf --max-time 5 https://ifconfig.me 2>/dev/null || echo "")
+    [[ -z "$PUBLIC_IP" ]] && PUBLIC_IP=$(curl -sf --max-time 5 https://api.ipify.org 2>/dev/null || echo "")
+    [[ -z "$PUBLIC_IP" ]] && PUBLIC_IP=$(curl -sf --max-time 5 https://ipinfo.io/ip 2>/dev/null || echo "")
 
     echo ""
     echo "═════════════════════════════════════════════"
