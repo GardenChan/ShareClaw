@@ -284,16 +284,28 @@ function setTrack(p){document.getElementById('trackFill').style.width=p+'%';docu
 function setText(t){document.getElementById('stageText').textContent=t}
 function setCard(s){document.getElementById('card').className='card'+(s?' '+s:'')}
 function showQR(d){
+  console.log('[ShareClaw] QR raw data length:', d.length);
+  console.log('[ShareClaw] QR raw data:', d);
+
   /* 解析原始数据：提取链接 */
   const lines = d.split('\n');
   let url = '';
 
   for(const line of lines){
     const trimmed = line.trim();
-    if(/https?:\/\//.test(trimmed)){
-      const m = trimmed.match(/(https?:\/\/\S+)/);
-      if(m) url = m[1];
+    /* 匹配各种 URL 格式：直接 URL、冒号后 URL 等 */
+    const m = trimmed.match(/(https?:\/\/[^\s'"<>]+)/);
+    if(m){
+      url = m[1];
+      /* 去掉尾部可能的标点 */
+      url = url.replace(/[.,;:!?。，；：！？]+$/, '');
+      console.log('[ShareClaw] Found URL:', url);
+      break;
     }
+  }
+
+  if(!url){
+    console.warn('[ShareClaw] No URL found in QR data, will fall back to text QR');
   }
 
   const canvasEl = document.getElementById('qrCanvas');
@@ -313,7 +325,9 @@ function showQR(d){
         colorLight: '#FFFFFF',
         correctLevel: QRCode.CorrectLevel.M,
       });
+      console.log('[ShareClaw] QRCode image rendered OK');
     }catch(e){
+      console.error('[ShareClaw] QRCode render failed:', e);
       canvasEl.style.display='none';
       _showTextQR(d, lines, qrEl);
     }

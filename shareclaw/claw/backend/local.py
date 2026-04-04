@@ -301,6 +301,9 @@ class LocalBackend(ClawBackend):
         output_lines = []
         qrcode_lines = []
         collecting_qrcode = False
+        # 二维码字符画结束后，继续收集几行（可能包含 URL 等附加信息）
+        post_qr_collecting = False
+        post_qr_remaining = 0
         start_time = time.time()
 
         try:
@@ -314,12 +317,26 @@ class LocalBackend(ClawBackend):
                     qrcode_lines.append(line)
                     continue
 
-                # 收集二维码文本行（二维码由特殊字符组成，遇到空行或非二维码内容时结束收集）
+                # 收集二维码文本行
                 if collecting_qrcode:
                     stripped = line.strip()
                     if stripped == "" and len(qrcode_lines) > 1:
-                        # 空行标志二维码结束，立即推送
+                        # 空行标志二维码字符画结束，但继续收集后续几行（可能含 URL）
                         collecting_qrcode = False
+                        post_qr_collecting = True
+                        post_qr_remaining = 5  # 最多再读 5 行
+                        qrcode_lines.append(line)
+                    else:
+                        qrcode_lines.append(line)
+                    continue
+
+                # 空行后继续收集附加行（URL 等）
+                if post_qr_collecting:
+                    qrcode_lines.append(line)
+                    post_qr_remaining -= 1
+                    # 如果收集到了 URL 或者剩余次数用完，立即推送
+                    if "http" in line or post_qr_remaining <= 0:
+                        post_qr_collecting = False
                         qrcode_text = "".join(qrcode_lines)
                         qrcode_yielded = True
                         yield sse_event("qrcode", {
@@ -327,15 +344,14 @@ class LocalBackend(ClawBackend):
                             "message": "请扫描以下二维码登录微信",
                             "data": qrcode_text,
                         })
-                    else:
-                        qrcode_lines.append(line)
+                    continue
 
                 # 超时检查（10 分钟）
                 if time.time() - start_time > 600:
                     process.kill()
                     raise TimeoutError("登录超时（600秒）")
 
-            # 如果二维码收集中但进程已结束（没有遇到空行结束符），仍然推送
+            # 如果二维码收集中但进程已结束，仍然推送
             if qrcode_found and not qrcode_yielded:
                 qrcode_text = "".join(qrcode_lines)
                 qrcode_yielded = True

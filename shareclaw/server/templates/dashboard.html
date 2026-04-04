@@ -405,10 +405,28 @@ async function createInvite(){
   load();
 }
 function hideInviteDialog(){document.getElementById('inviteDialog').classList.remove('visible')}
+function _fallbackCopy(text){
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=text;ta.style.cssText='position:fixed;left:-9999px;top:-9999px;opacity:0';
+    document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,text.length);
+    const ok=document.execCommand('copy');
+    document.body.removeChild(ta);return ok;
+  }catch(e){return false}
+}
+function _copyText(text,successMsg){
+  successMsg=successMsg||'已复制';
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>showToast(successMsg)).catch(()=>{
+      _fallbackCopy(text)?showToast(successMsg):showToast('复制失败，请手动复制');
+    });
+  } else {
+    _fallbackCopy(text)?showToast(successMsg):showToast('复制失败，请手动复制');
+  }
+}
 function copyInviteUrl(){
   if(window._lastInviteUrl){
-    navigator.clipboard.writeText(window._lastInviteUrl);
-    showToast('邀请链接已复制');
+    _copyText(window._lastInviteUrl,'邀请链接已复制');
   }
 }
 
@@ -438,7 +456,7 @@ async function delInv(c){
   if(r.status===401){showLogin();return}
   showToast('已删除');load();
 }
-function copyCode(c){navigator.clipboard.writeText(location.origin+'/?invite='+c);showToast('邀请链接已复制')}
+function copyCode(c){_copyText(location.origin+'/?invite='+c,'邀请链接已复制')}
 async function saveSettings(){
   const s={monthly_cost:parseFloat(document.getElementById('sCostVal').value)||0,default_quota_hours:parseInt(document.getElementById('sQuotaVal').value)||8,require_invite:document.getElementById('sInv').classList.contains('on'),auto_evict_enabled:document.getElementById('sAuto').classList.contains('on'),account_isolation_enabled:document.getElementById('sIsolation').classList.contains('on')};
   const r=await fetch('/api/settings',{method:'PUT',headers:authHeaders(),body:JSON.stringify(s)});
